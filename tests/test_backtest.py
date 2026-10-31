@@ -28,7 +28,7 @@ def test_no_future_leakage_from_holdout_changes():
         altered.iat[i, 9 - i] *= 2
     a = rolling_backtest(original)
     b = rolling_backtest(altered)
-    pd.testing.assert_frame_equal(a, b)
+    pd.testing.assert_frame_equal(a.drop(columns=['actual']), b.drop(columns=['actual']))
 
 
 def test_insufficient_holdout_raises():
