@@ -3,6 +3,7 @@ import streamlit as st
 import plotly.express as px
 from actuarial_ai import chain_ladder, synthetic_triangle
 from actuarial_ai.ml import ml_reserving, holdout_last_diagonal
+from actuarial_ai.backtest import rolling_backtest, backtest_metrics
 
 st.set_page_config(page_title="ActuarialAI | Reserving", layout="wide")
 st.title("ActuarialAI — Chain-Ladder Reserving")
@@ -39,3 +40,12 @@ if n >= 6:
         st.info(str(exc))
 else:
     st.info("Select at least six origin periods to run the experimental ML benchmark.")
+
+st.subheader("Rolling calendar-time backtest")
+st.caption("Both models are evaluated on the same next-calendar-period paid observations; training uses earlier calendar diagonals only.")
+predictions = rolling_backtest(triangle)
+if predictions.empty:
+    st.info("Insufficient historical development pairs for rolling backtest.")
+else:
+    st.dataframe(backtest_metrics(predictions), use_container_width=True)
+    st.dataframe(predictions, use_container_width=True)
