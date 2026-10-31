@@ -16,3 +16,7 @@ The one-step holdout removes the latest observed calendar diagonal from the trai
 - No uncertainty intervals, hyperparameter search, tail factors, exposure adjustments, inflation, or claims-level covariates.
 - A stronger evaluation should compare both methods over several rolling valuation dates, with identical available information and reserve/ultimate error metrics.
 - Do not use results for regulatory, accounting, or financial decisions.
+
+## Rolling calendar-time comparison
+
+The rolling backtest fits models using only development pairs observable by each valuation calendar diagonal. It predicts one-step cumulative paid values on the next diagonal. Both models use exactly the same eligible holdout cells and report MAE/RMSE. Later valuation periods are excluded when insufficient training observations exist. This is still a synthetic-data demonstration, not a reserve-ultimate backtest or proof of superiority.
