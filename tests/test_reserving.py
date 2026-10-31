@@ -1,4 +1,3 @@
-import numpy as np
 import pandas as pd
 import pytest
 from actuarial_ai import chain_ladder, synthetic_triangle
