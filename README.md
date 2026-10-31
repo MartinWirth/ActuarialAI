@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/MartinWirth/ActuarialAI/actions/workflows/ci.yml/badge.svg)](https://github.com/MartinWirth/ActuarialAI/actions/workflows/ci.yml)
 
-**Phase 1 — Explainable Insurance Reserving MVP.** A reproducible educational implementation of volume-weighted deterministic chain-ladder reserving, including a Streamlit dashboard, synthetic data, tests and CI.
+**Phase 1–2 — Explainable Insurance Reserving and experimental ML benchmark.** A reproducible educational implementation of volume-weighted deterministic chain-ladder reserving, including a Streamlit dashboard, synthetic data, tests and CI.
 
 ## Quick start
 
@@ -30,3 +30,7 @@ For development period j, the volume-weighted link ratio is f_j = sum(C[i,j+1]) 
 - This prototype is **not** suitable for financial reporting or actuarial sign-off.
 
 See [requirements](docs/requirements.md) and [architecture](docs/architecture.md).
+
+## Phase 2 — experimental ML benchmark
+
+The dashboard compares classical Chain-Ladder with random-forest development-factor forecasts, and shows a withheld-calendar-diagonal one-step MAE. This is an educational proof of concept; it does not claim improved predictive accuracy. See [ML benchmark methodology](docs/ml-benchmark.md).
