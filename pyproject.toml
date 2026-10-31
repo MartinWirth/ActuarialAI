@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+[project]
+name = "actuarial-ai"
+version = "0.1.0"
+description = "Explainable actuarial reserving MVP"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24", "pandas>=2.0", "streamlit>=1.35", "plotly>=5.20"]
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+[tool.setuptools.packages.find]
+where = ["src"]
+[tool.pytest.ini_options]
+pythonpath = ["src"]
