@@ -50,3 +50,7 @@ Upload a cumulative paid claims triangle in **wide** CSV or XLSX format. The fir
 Install Excel support with `pip install -e '.[excel]'`. In the Streamlit sidebar, upload a file; the dashboard validates it before calculating reserves. Download a validated CSV and a JSON Chain-Ladder analysis report. The report includes a timestamp, source filename, method, factors, origin-level reserves and limitations.
 
 **Privacy:** Uploaded data is processed in the environment where Streamlit runs. Do not upload sensitive claims information to an untrusted hosted deployment. The application does not implement authentication, encrypted storage, or data retention controls. Outputs are illustrative and require actuarial review.
+
+## Phase 6 — quality diagnostics
+
+The dashboard provides a quality summary, age-specific robust outlier screening, and downloadable pair-level CSV diagnostics. Sparse development ages are marked unassessable. Flags do not alter calculations. See [methodology](docs/data-quality.md).
