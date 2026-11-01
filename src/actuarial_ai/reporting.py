@@ -15,7 +15,7 @@ def analysis_report(triangle: pd.DataFrame, source: str = "synthetic") -> dict:
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "source": source,
         "method": "volume_weighted_chain_ladder",
-        "origin_periods": int(len(triangle)),
+        "origin_periods": len(triangle),
         "development_periods": int(triangle.shape[1]),
         "total_reserve": float(result["total_reserve"]),
         "development_factors": [float(v) for v in result["factors"]],
