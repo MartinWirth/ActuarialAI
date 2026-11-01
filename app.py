@@ -8,6 +8,7 @@ from actuarial_ai.data_io import load_triangle, triangle_csv
 from actuarial_ai.explainability import factor_feature_importance
 from actuarial_ai.governance import monitoring_report
 from actuarial_ai.ml import holdout_last_diagonal, ml_reserving
+from actuarial_ai.quality import quality_csv, quality_report
 from actuarial_ai.reporting import analysis_report, report_json
 from actuarial_ai.shap_explain import shap_factor_explanations
 from actuarial_ai.uncertainty import bootstrap_reserves
@@ -35,6 +36,19 @@ st.download_button("Download validated triangle (CSV)", triangle_csv(triangle),
 st.download_button("Download Chain-Ladder report (JSON)",
                    report_json(analysis_report(triangle, source=source_name)),
                    file_name="actuarial_report.json", mime="application/json")
+quality = quality_report(triangle)
+st.subheader("Data quality and anomaly diagnostics")
+st.caption("Age-specific median/MAD screening; flagged pairs require actuarial review. Sparse ages are unassessable, not normal.")
+q = quality["summary"]
+col1, col2, col3 = st.columns(3)
+col1.metric("Observed cells", q["observed_cells"])
+col2.metric("Flagged development pairs", q["flagged_pairs"])
+col3.metric("Unassessable pairs", q["unassessable_pairs"])
+st.dataframe(quality["flags"], use_container_width=True)
+with st.expander("All development-pair diagnostics"):
+    st.dataframe(quality["diagnostics"], use_container_width=True)
+st.download_button("Download quality diagnostics (CSV)", quality_csv(quality),
+                   file_name="quality_diagnostics.csv", mime="text/csv")
 result = chain_ladder(triangle)
 st.metric("Estimated outstanding reserve", f"{result['total_reserve']:,.0f} synthetic units")
 st.subheader("Observed cumulative claims triangle")
