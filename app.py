@@ -8,6 +8,8 @@ from actuarial_ai.data_io import load_triangle, triangle_csv
 from actuarial_ai.explainability import factor_feature_importance
 from actuarial_ai.governance import monitoring_report
 from actuarial_ai.ml import holdout_last_diagonal, ml_reserving
+from actuarial_ai.portfolio import portfolio_report, portfolio_scenarios
+from actuarial_ai.portfolio_io import load_portfolio_csv
 from actuarial_ai.quality import quality_csv, quality_report
 from actuarial_ai.reporting import analysis_report, report_json
 from actuarial_ai.scenarios import scenario_comparison, sensitivity_grid
@@ -139,3 +141,28 @@ st.dataframe(sensitivity, use_container_width=True)
 st.download_button("Download sensitivity grid (CSV)",
                    sensitivity.to_csv(index=False).encode("utf-8"),
                    file_name="reserve_sensitivity.csv", mime="text/csv")
+
+st.subheader("Multi-segment portfolio analysis")
+st.caption("Upload long-form CSV: segment, origin, development, cumulative_paid. Development labels must sort in age order (e.g. D01, D02).")
+portfolio_upload = st.file_uploader("Portfolio CSV", type=["csv"], key="portfolio_csv")
+if portfolio_upload is not None:
+    try:
+        segments = load_portfolio_csv(portfolio_upload.getvalue())
+        portfolio = portfolio_report(segments, inflation_stress, factor_stress)
+        totals = portfolio["totals"]
+        pc1, pc2, pc3 = st.columns(3)
+        pc1.metric("Portfolio baseline reserve", f"{totals['baseline_reserve']:,.0f}")
+        pc2.metric("Portfolio stressed reserve", f"{totals['stressed_reserve']:,.0f}")
+        pc3.metric("Portfolio reserve delta", f"{totals['reserve_delta']:,.0f}")
+        st.dataframe(portfolio["segments"], use_container_width=True)
+        st.bar_chart(portfolio["segments"].set_index("segment")[["baseline_reserve", "stressed_reserve"]])
+        st.download_button("Download portfolio segment report (CSV)",
+                           portfolio["segments"].to_csv(index=False).encode("utf-8"),
+                           file_name="portfolio_segments.csv", mime="text/csv")
+        portfolio_cases = portfolio_scenarios(segments, inflation_stress, factor_stress)
+        st.dataframe(portfolio_cases, use_container_width=True)
+        st.download_button("Download portfolio scenarios (CSV)",
+                           portfolio_cases.to_csv(index=False).encode("utf-8"),
+                           file_name="portfolio_scenarios.csv", mime="text/csv")
+    except (TypeError, ValueError) as exc:
+        st.error(f"Invalid portfolio data: {exc}")
