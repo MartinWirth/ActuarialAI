@@ -42,3 +42,11 @@ The dashboard now includes bootstrap development-factor sensitivity and in-sampl
 ## Phase 4 — model governance
 
 The rolling calendar-time comparison now includes per-valuation MAE monitoring and an illustrative underperformance alert when Random Forest exceeds Chain-Ladder MAE by more than 10%. See [model governance, explainability and limitations](docs/model-governance.md). Existing permutation importance is not SHAP; this phase does not claim SHAP support.
+
+## Phase 5 — import and reporting
+
+Upload a cumulative paid claims triangle in **wide** CSV or XLSX format. The first column must contain unique origin labels; subsequent columns are development ages ordered from earliest to latest. For an `n × n` triangle, row 1 must contain `n` observed values, row 2 `n-1`, down to the final row with one observed value. Leave future cells blank. Observed amounts must be numeric, finite, nonnegative and nondecreasing; each development age must have positive volume.
+
+Install Excel support with `pip install -e '.[excel]'`. In the Streamlit sidebar, upload a file; the dashboard validates it before calculating reserves. Download a validated CSV and a JSON Chain-Ladder analysis report. The report includes a timestamp, source filename, method, factors, origin-level reserves and limitations.
+
+**Privacy:** Uploaded data is processed in the environment where Streamlit runs. Do not upload sensitive claims information to an untrusted hosted deployment. The application does not implement authentication, encrypted storage, or data retention controls. Outputs are illustrative and require actuarial review.
