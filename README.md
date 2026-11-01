@@ -38,3 +38,7 @@ The dashboard compares classical Chain-Ladder with random-forest development-fac
 ## Phase 3 — uncertainty and explainability
 
 The dashboard now includes bootstrap development-factor sensitivity and in-sample permutation importance for the experimental random forest. These are educational diagnostics, **not** calibrated predictive confidence intervals or causal explanations. See [methodology and limitations](docs/uncertainty-and-explainability.md).
+
+## Phase 4 — model governance
+
+The rolling calendar-time comparison now includes per-valuation MAE monitoring and an illustrative underperformance alert when Random Forest exceeds Chain-Ladder MAE by more than 10%. See [model governance, explainability and limitations](docs/model-governance.md). Existing permutation importance is not SHAP; this phase does not claim SHAP support.
