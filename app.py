@@ -7,6 +7,7 @@ from actuarial_ai.backtest import backtest_metrics, rolling_backtest
 from actuarial_ai.explainability import factor_feature_importance
 from actuarial_ai.governance import monitoring_report
 from actuarial_ai.ml import holdout_last_diagonal, ml_reserving
+from actuarial_ai.shap_explain import shap_factor_explanations
 from actuarial_ai.uncertainty import bootstrap_reserves
 
 st.set_page_config(page_title="ActuarialAI | Reserving", layout="wide")
@@ -72,3 +73,15 @@ if n >= 6:
     importance = factor_feature_importance(triangle)
     st.dataframe(importance, use_container_width=True)
     st.bar_chart(importance.set_index("feature")["importance_mean"])
+
+if n >= 6:
+    st.subheader("SHAP factor explanations (optional)")
+    st.caption("In-sample contributions to predicted development factors, not causal effects or reserve-level explanations.")
+    if st.checkbox("Compute SHAP explanations", value=False):
+        try:
+            shap_result = shap_factor_explanations(triangle)
+            st.dataframe(shap_result["importance"], use_container_width=True)
+            st.bar_chart(shap_result["importance"].set_index("feature")["mean_absolute_shap"])
+            st.dataframe(shap_result["details"], use_container_width=True)
+        except (ImportError, ValueError) as exc:
+            st.warning(str(exc))
