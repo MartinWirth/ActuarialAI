@@ -58,3 +58,7 @@ The dashboard provides a quality summary, age-specific robust outlier screening,
 ## Phase 7 — scenario analysis
 
 Interactive best/base/worst reserve stress tests and a 3×3 inflation/development sensitivity grid are available in Streamlit, with CSV downloads. Observed payments remain unchanged; shocks affect future projected incremental payments only. See [scenario methodology](docs/scenario-analysis.md).
+
+## Phase 8 — multi-segment portfolio
+
+Upload long-form portfolio CSVs to aggregate independently validated segment reserves, compare baseline and stressed totals, review segment reserve shares and reserve-to-paid indicators, and export results. See [portfolio data schema and limitations](docs/portfolio-analysis.md).
