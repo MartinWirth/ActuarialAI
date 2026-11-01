@@ -10,6 +10,7 @@ dependencies = ["numpy>=1.24", "pandas>=2.0", "streamlit>=1.35", "plotly>=5.20",
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.6"]
 explain = ["shap>=0.46,<1"]
+excel = ["openpyxl>=3.1"]
 [tool.setuptools.packages.find]
 where = ["src"]
 [tool.pytest.ini_options]
