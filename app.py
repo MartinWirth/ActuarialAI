@@ -4,9 +4,11 @@ import streamlit as st
 
 from actuarial_ai import chain_ladder, synthetic_triangle
 from actuarial_ai.backtest import backtest_metrics, rolling_backtest
+from actuarial_ai.data_io import load_triangle, triangle_csv
 from actuarial_ai.explainability import factor_feature_importance
 from actuarial_ai.governance import monitoring_report
 from actuarial_ai.ml import holdout_last_diagonal, ml_reserving
+from actuarial_ai.reporting import analysis_report, report_json
 from actuarial_ai.shap_explain import shap_factor_explanations
 from actuarial_ai.uncertainty import bootstrap_reserves
 
@@ -16,6 +18,23 @@ st.caption("Educational demonstration with synthetic cumulative paid claims; not
 n = st.sidebar.slider("Origin periods", 4, 12, 8)
 seed = st.sidebar.number_input("Random seed", min_value=0, value=42)
 triangle = synthetic_triangle(n, int(seed))
+uploaded = st.sidebar.file_uploader("Claims triangle (.csv or .xlsx)", type=["csv", "xlsx"])
+source_name = "synthetic"
+if uploaded is not None:
+    try:
+        triangle = load_triangle(uploaded.getvalue(), uploaded.name)
+        source_name = uploaded.name
+        n = len(triangle)
+        st.sidebar.success(f"Validated {n} origin periods")
+    except ValueError as exc:
+        st.error(f"Invalid claims triangle: {exc}")
+        st.stop()
+st.sidebar.caption("Uploaded files are processed in the running application. Avoid uploading sensitive claims data to untrusted deployments.")
+st.download_button("Download validated triangle (CSV)", triangle_csv(triangle),
+                   file_name="claims_triangle.csv", mime="text/csv")
+st.download_button("Download Chain-Ladder report (JSON)",
+                   report_json(analysis_report(triangle, source=source_name)),
+                   file_name="actuarial_report.json", mime="application/json")
 result = chain_ladder(triangle)
 st.metric("Estimated outstanding reserve", f"{result['total_reserve']:,.0f} synthetic units")
 st.subheader("Observed cumulative claims triangle")
