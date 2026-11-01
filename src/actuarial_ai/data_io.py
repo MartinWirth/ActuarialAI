@@ -8,7 +8,7 @@ import pandas as pd
 def validate_triangle(triangle: pd.DataFrame) -> pd.DataFrame:
     """Return a numeric, strictly shaped triangle suitable for chain-ladder."""
     if not isinstance(triangle, pd.DataFrame):
-        raise ValueError("Expected a DataFrame")
+        raise TypeError("Expected a DataFrame")
     n, m = triangle.shape
     if n < 2 or n != m:
         raise ValueError("Triangle must be square with at least two origin periods")
