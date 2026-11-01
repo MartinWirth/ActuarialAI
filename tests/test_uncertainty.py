@@ -3,8 +3,8 @@ import pandas as pd
 import pytest
 
 from actuarial_ai import synthetic_triangle
-from actuarial_ai.uncertainty import bootstrap_reserves
 from actuarial_ai.explainability import factor_feature_importance
+from actuarial_ai.uncertainty import bootstrap_reserves
 
 
 def test_bootstrap_reproducible():
