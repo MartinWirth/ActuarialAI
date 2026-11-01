@@ -54,3 +54,7 @@ Install Excel support with `pip install -e '.[excel]'`. In the Streamlit sidebar
 ## Phase 6 — quality diagnostics
 
 The dashboard provides a quality summary, age-specific robust outlier screening, and downloadable pair-level CSV diagnostics. Sparse development ages are marked unassessable. Flags do not alter calculations. See [methodology](docs/data-quality.md).
+
+## Phase 7 — scenario analysis
+
+Interactive best/base/worst reserve stress tests and a 3×3 inflation/development sensitivity grid are available in Streamlit, with CSV downloads. Observed payments remain unchanged; shocks affect future projected incremental payments only. See [scenario methodology](docs/scenario-analysis.md).
