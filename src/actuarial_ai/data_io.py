@@ -50,7 +50,9 @@ def load_triangle(data: bytes, filename: str) -> pd.DataFrame:
             raise ValueError("Supported file formats: .csv and .xlsx")
     except (OSError, UnicodeError, pd.errors.ParserError, ImportError) as exc:
         raise ValueError("Could not read triangle file; check format and Excel support") from exc
-    return validate_triangle(frame)
+    result = validate_triangle(frame)
+    result.index.name = None
+    return result
 
 
 def triangle_csv(triangle: pd.DataFrame) -> bytes:
