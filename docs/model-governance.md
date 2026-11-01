@@ -25,3 +25,7 @@ The dashboard already reports in-sample permutation importance of the developmen
 - Sparse development ages and repeated origin-period observations limit reliability.
 - No independent validation sample, model registry, drift reference distribution, or governance sign-off.
 - Before real use: approved data lineage, documented assumptions, stress scenarios, independent actuarial validation, privacy review, monitoring ownership, and reproducible model artifacts.
+
+## Optional SHAP integration
+
+Install with `pip install -e '.[explain]'`, then enable **Compute SHAP explanations** in Streamlit. A TreeExplainer attributes the experimental random forest's **predicted age-to-age factor** to development age and paid amount. The implementation checks that baseline plus SHAP contributions reconstruct the model prediction. Mean absolute contributions summarize the observed training pairs (capped at 100 rows). These are in-sample, feature-correlated, and not causal; they do not explain ultimate reserves. The optional SHAP test runs in CI after installing the explain extra.
