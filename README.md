@@ -34,3 +34,7 @@ See [requirements](docs/requirements.md) and [architecture](docs/architecture.md
 ## Phase 2 — experimental ML benchmark
 
 The dashboard compares classical Chain-Ladder with random-forest development-factor forecasts, and shows a withheld-calendar-diagonal one-step MAE. This is an educational proof of concept; it does not claim improved predictive accuracy. See [ML benchmark methodology](docs/ml-benchmark.md).
+
+## Phase 3 — uncertainty and explainability
+
+The dashboard now includes bootstrap development-factor sensitivity and in-sample permutation importance for the experimental random forest. These are educational diagnostics, **not** calibrated predictive confidence intervals or causal explanations. See [methodology and limitations](docs/uncertainty-and-explainability.md).
