@@ -4,6 +4,8 @@ import plotly.express as px
 from actuarial_ai import chain_ladder, synthetic_triangle
 from actuarial_ai.ml import ml_reserving, holdout_last_diagonal
 from actuarial_ai.backtest import rolling_backtest, backtest_metrics
+from actuarial_ai.uncertainty import bootstrap_reserves
+from actuarial_ai.explainability import factor_feature_importance
 
 st.set_page_config(page_title="ActuarialAI | Reserving", layout="wide")
 st.title("ActuarialAI — Chain-Ladder Reserving")
@@ -49,3 +51,17 @@ if predictions.empty:
 else:
     st.dataframe(backtest_metrics(predictions), use_container_width=True)
     st.dataframe(predictions, use_container_width=True)
+
+st.subheader("Bootstrap reserve sensitivity")
+st.caption("Educational resampling of development factors; not a calibrated reserve confidence interval.")
+simulation_count = st.slider("Bootstrap simulations", 100, 1000, 300, step=100)
+bootstrap = bootstrap_reserves(triangle, simulations=simulation_count, seed=int(seed))
+st.write(f"Illustrative 90% sample quantile range: {bootstrap['lower']:,.0f} to {bootstrap['upper']:,.0f} synthetic units")
+st.plotly_chart(px.histogram(x=bootstrap["samples"], nbins=35,
+    labels={"x": "Simulated total reserve (synthetic units)"}), use_container_width=True)
+if n >= 6:
+    st.subheader("Experimental ML feature importance")
+    st.caption("In-sample permutation importance; not causal and not validated out of sample.")
+    importance = factor_feature_importance(triangle)
+    st.dataframe(importance, use_container_width=True)
+    st.bar_chart(importance.set_index("feature")["importance_mean"])
