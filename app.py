@@ -10,6 +10,7 @@ from actuarial_ai.governance import monitoring_report
 from actuarial_ai.ml import holdout_last_diagonal, ml_reserving
 from actuarial_ai.quality import quality_csv, quality_report
 from actuarial_ai.reporting import analysis_report, report_json
+from actuarial_ai.scenarios import scenario_comparison, sensitivity_grid
 from actuarial_ai.shap_explain import shap_factor_explanations
 from actuarial_ai.uncertainty import bootstrap_reserves
 
@@ -118,3 +119,23 @@ if n >= 6:
             st.dataframe(shap_result["details"], use_container_width=True)
         except (ImportError, ValueError) as exc:
             st.warning(str(exc))
+
+st.subheader("Scenario analysis and stress testing")
+st.caption("Illustrative deterministic shocks applied only to future incremental payments; not a calibrated forecast.")
+inflation_stress = st.slider("Annual future-payment inflation stress (%)", 0, 30, 5, step=1) / 100
+factor_stress = st.slider("Future development increment stress (%)", 0, 30, 10, step=1) / 100
+scenarios = scenario_comparison(triangle, inflation_stress, factor_stress)
+st.dataframe(scenarios, use_container_width=True)
+st.bar_chart(scenarios.set_index("scenario")["total_reserve"])
+st.download_button("Download scenario comparison (CSV)",
+                   scenarios.to_csv(index=False).encode("utf-8"),
+                   file_name="reserve_scenarios.csv", mime="text/csv")
+sensitivity = sensitivity_grid(
+    triangle, (-inflation_stress, 0.0, inflation_stress),
+    (-factor_stress, 0.0, factor_stress),
+)
+st.caption("Reserve sensitivity by combined future inflation and development shocks")
+st.dataframe(sensitivity, use_container_width=True)
+st.download_button("Download sensitivity grid (CSV)",
+                   sensitivity.to_csv(index=False).encode("utf-8"),
+                   file_name="reserve_sensitivity.csv", mime="text/csv")
