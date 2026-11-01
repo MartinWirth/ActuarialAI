@@ -3,7 +3,11 @@ import pandas as pd
 import pytest
 
 from actuarial_ai import chain_ladder, synthetic_triangle
-from actuarial_ai.scenarios import scenario_comparison, sensitivity_grid, stress_reserves
+from actuarial_ai.scenarios import (
+    scenario_comparison,
+    sensitivity_grid,
+    stress_reserves,
+)
 
 
 def test_zero_stress_equals_baseline():
