@@ -5,6 +5,7 @@ import streamlit as st
 from actuarial_ai import chain_ladder, synthetic_triangle
 from actuarial_ai.backtest import backtest_metrics, rolling_backtest
 from actuarial_ai.explainability import factor_feature_importance
+from actuarial_ai.governance import monitoring_report
 from actuarial_ai.ml import holdout_last_diagonal, ml_reserving
 from actuarial_ai.uncertainty import bootstrap_reserves
 
@@ -52,6 +53,11 @@ if predictions.empty:
 else:
     st.dataframe(backtest_metrics(predictions), use_container_width=True)
     st.dataframe(predictions, use_container_width=True)
+    st.subheader("Model governance monitoring")
+    st.caption("Out-of-time MAE per valuation; alerts are illustrative and require human review.")
+    monitoring = monitoring_report(predictions)
+    st.metric("ML underperformance alerts", monitoring["alert_count"])
+    st.dataframe(monitoring["by_valuation"], use_container_width=True)
 
 st.subheader("Bootstrap reserve sensitivity")
 st.caption("Educational resampling of development factors; not a calibrated reserve confidence interval.")
