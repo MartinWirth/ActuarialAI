@@ -14,6 +14,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from .mack import mack_chain_ladder
+from .portfolio_mack import aggregate_mack
 from .portfolio import portfolio_report
 from .portfolio_governance import governance_assessment
 from .portfolio_risk import simulate_portfolio_risk
@@ -26,6 +27,7 @@ class ReportOptions:
     include_governance: bool = True
     include_charts: bool = True
     include_mack: bool = False
+    mack_correlation: float = 0.0
     simulations: int = 2000
     confidence: float = 0.95
     seed: int = 42
@@ -135,8 +137,8 @@ def configurable_portfolio_pdf(
             Paragraph("Mack Chain-Ladder prediction uncertainty", styles["Heading2"]),
             Paragraph(
                 f"Nominal normal-approximation interval: {options.confidence:.0%}. "
-                "Segment-level estimates only; no portfolio Mack standard error "
-                "or aggregate interval is calculated.", styles["Normal"],
+                f"Assumed cross-segment correlation: {options.mack_correlation:.2f}. "
+                "Portfolio aggregation is assumption-driven.", styles["Normal"],
             ),
         ])
         mack_rows = [["Segment", "Reserve", "Mack S.E.", "Lower", "Upper"]]
@@ -166,12 +168,33 @@ def configurable_portfolio_pdf(
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ]))
             story.append(mack_table)
+        try:
+            aggregate = aggregate_mack(
+                segments, correlation=options.mack_correlation,
+                confidence=options.confidence,
+            )
+        except ValueError as exc:
+            story.append(Paragraph(
+                f"Portfolio Mack aggregation unavailable: {escape(str(exc))}",
+                styles["Normal"],
+            ))
+        else:
+            story.append(Paragraph(
+                f"Portfolio reserve: {aggregate['total_reserve']:,.2f}; "
+                f"aggregated Mack S.E.: {aggregate['total_se']:,.2f}; "
+                f"interval: [{aggregate['lower']:,.2f}, "
+                f"{aggregate['upper']:,.2f}]; "
+                f"independent S.E.: {aggregate['independent_se']:,.2f}; "
+                f"diversification versus sum of standalone S.E.: "
+                f"{aggregate['diversification_benefit']:,.2f}.",
+                styles["Normal"],
+            ))
         story.append(Paragraph(
             "Assumptions: independent origin periods within each segment; "
             "conditional variance proportional to cumulative paid; final-age "
             "variance extrapolated; no tail factor. Normal intervals are "
             "illustrative, truncated at zero, and not calibrated. "
-            "Cross-segment dependence is not estimated.",
+            "Cross-segment dependence is user-assumed, not estimated.",
             styles["Normal"],
         ))
     if risk is not None:
@@ -221,7 +244,7 @@ def configurable_portfolio_pdf(
             "Monte Carlo volatility and correlation are assumed, not calibrated. "
             "VaR/Expected Shortfall are not regulatory capital. Diagnostic status "
             "does not imply approval. Mack normal intervals are not calibrated "
-            "and cross-segment Mack uncertainty is not aggregated. "
+             "and Mack cross-segment correlation is assumed, not calibrated. "
             "Independent actuarial review is required.",
             styles["Normal"],
         ),
