@@ -6,9 +6,18 @@ from actuarial_ai import chain_ladder, synthetic_triangle
 from actuarial_ai.approval_workflow import (
     audit_events,
     audit_export,
+    authenticated_transition,
     report_status,
-    transition_report,
     verify_audit_chain,
+)
+from actuarial_ai.auth import (
+    create_user,
+    has_users,
+    identity,
+    list_users,
+    login,
+    logout,
+    require_permission,
 )
 from actuarial_ai.backtest import backtest_metrics, rolling_backtest
 from actuarial_ai.data_io import load_triangle, triangle_csv
@@ -35,6 +44,70 @@ from actuarial_ai.validation import validate_models, validation_report
 
 st.set_page_config(page_title="ActuarialAI | Reserving", layout="wide")
 st.title("ActuarialAI — Chain-Ladder Reserving")
+DB_PATH = "data/actuarialai_reports.sqlite3"
+if not has_users(DB_PATH):
+    st.warning(
+        "Initial local setup: create the first administrator account. "
+        "Use a strong unique password and run only on a trusted machine."
+    )
+    with st.form("bootstrap_admin"):
+        initial_username = st.text_input("Administrator username")
+        initial_password = st.text_input("Administrator password", type="password")
+        bootstrap = st.form_submit_button("Create administrator")
+    if bootstrap:
+        try:
+            create_user(DB_PATH, initial_username, initial_password, "ADMIN")
+            st.success("Administrator created. Sign in below.")
+            st.rerun()
+        except (ValueError, PermissionError) as exc:
+            st.error(str(exc))
+    st.stop()
+
+session_token = st.session_state.get("auth_token")
+current_user = identity(DB_PATH, session_token)
+if current_user is None:
+    st.session_state.pop("auth_token", None)
+    with st.form("sign_in"):
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        sign_in = st.form_submit_button("Sign in")
+    if sign_in:
+        try:
+            st.session_state["auth_token"] = login(DB_PATH, username, password)
+            st.rerun()
+        except PermissionError:
+            st.error("Invalid credentials")
+    st.stop()
+
+st.sidebar.caption(
+    f"Signed in: {current_user['username']} ({current_user['role']})"
+)
+if st.sidebar.button("Sign out"):
+    logout(DB_PATH, session_token)
+    st.session_state.pop("auth_token", None)
+    st.rerun()
+
+if current_user["role"] == "ADMIN":
+    with st.sidebar.expander("User administration"):
+        with st.form("new_user"):
+            new_username = st.text_input("New username")
+            new_password = st.text_input("New password", type="password")
+            new_role = st.selectbox(
+                "Role", ["ACTUARY", "REVIEWER", "AUDITOR", "ADMIN"],
+            )
+            create_account = st.form_submit_button("Create account")
+        if create_account:
+            try:
+                create_user(
+                    DB_PATH, new_username, new_password, new_role,
+                    admin_token=session_token,
+                )
+                st.success("Account created")
+            except (ValueError, PermissionError) as exc:
+                st.error(str(exc))
+        st.dataframe(list_users(DB_PATH, session_token))
+
+
 st.caption("Educational demonstration with synthetic cumulative paid claims; not for production actuarial decisions.")
 n = st.sidebar.slider("Origin periods", 4, 12, 8)
 seed = st.sidebar.number_input("Random seed", min_value=0, value=42)
@@ -295,7 +368,10 @@ if portfolio_upload is not None:
                     file_name=f"portfolio_report_{version[:12]}.pdf",
                     mime="application/pdf",
                 )
-                if st.button("Save report snapshot to local history"):
+                if st.button(
+                    "Save report snapshot to local history",
+                    disabled=current_user["role"] not in {"ADMIN", "ACTUARY"},
+                ):
                     try:
                         audit = None
                         if settings.include_governance:
@@ -303,6 +379,7 @@ if portfolio_upload is not None:
                                 audit = governance_assessment(segments)
                             except ValueError:
                                 pass
+                        require_permission(DB_PATH, session_token, "save_reports")
                         record_id = save_report(
                             "data/actuarialai_reports.sqlite3",
                             version=version, source=portfolio_upload.name,
@@ -388,9 +465,9 @@ try:
                     "data/actuarialai_reports.sqlite3", selected_id,
                 )
                 st.caption(
-                    "Actor names are self-declared; no login or access controls. "
-                    "Hash chain detects some modifications but cannot prevent "
-                    "database replacement or privileged tampering."
+                    "Decisions use the signed-in identity. Local session and "
+                    "hash chain are not protection against server administrators "
+                    "or direct database modification."
                 )
                 if history_events:
                     st.dataframe(history_events, use_container_width=True)
@@ -412,19 +489,25 @@ try:
                 }[current_status]
                 if allowed:
                     with st.form(f"approval_transition_{selected_id}"):
-                        reviewer = st.text_input("Reviewer / actor name")
                         decision = st.selectbox("Next workflow status", allowed)
                         justification = st.text_area("Reason / review notes")
-                        submit_decision = st.form_submit_button("Record decision")
+                        submit_decision = st.form_submit_button(
+                            "Record decision",
+                            disabled=(
+                                current_user["role"] not in {"ADMIN", "ACTUARY"}
+                                if current_status in {"DRAFT", "REJECTED"}
+                                else current_user["role"] != "REVIEWER"
+                            ),
+                        )
                     if submit_decision:
                         try:
-                            transition_report(
-                                "data/actuarialai_reports.sqlite3", selected_id,
-                                reviewer, decision, justification,
+                            authenticated_transition(
+                                DB_PATH, selected_id, session_token,
+                                decision, justification,
                             )
                             st.success("Decision recorded in append-only audit log.")
                             st.rerun()
-                        except (OSError, ValueError) as exc:
+                        except (OSError, ValueError, PermissionError) as exc:
                             st.error(f"Decision not recorded: {exc}")
             except (OSError, ValueError) as exc:
                 st.error(f"Governance workflow unavailable: {exc}")
