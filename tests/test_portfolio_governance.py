@@ -3,7 +3,10 @@ import json
 import pytest
 
 from actuarial_ai import synthetic_triangle
-from actuarial_ai.portfolio_governance import governance_assessment, governance_audit_report
+from actuarial_ai.portfolio_governance import (
+    governance_assessment,
+    governance_audit_report,
+)
 from actuarial_ai.reporting import report_json
 
 
