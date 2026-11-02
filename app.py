@@ -10,6 +10,7 @@ from actuarial_ai.governance import monitoring_report
 from actuarial_ai.ml import holdout_last_diagonal, ml_reserving
 from actuarial_ai.portfolio import portfolio_report, portfolio_scenarios
 from actuarial_ai.portfolio_backtest import portfolio_backtest
+from actuarial_ai.portfolio_governance import governance_assessment, governance_audit_report
 from actuarial_ai.portfolio_io import load_portfolio_csv
 from actuarial_ai.portfolio_risk import simulate_portfolio_risk
 from actuarial_ai.quality import quality_csv, quality_report
@@ -221,6 +222,35 @@ if portfolio_upload is not None:
                 )
             except ValueError as exc:
                 st.info(f"Portfolio backtest unavailable: {exc}")
+        if st.checkbox("Run portfolio model governance assessment", value=False):
+            min_valuations = st.number_input("Minimum common valuations", min_value=1, value=3)
+            max_mae_ratio = st.number_input(
+                "Maximum ML/Chain-Ladder MAE ratio", min_value=0.01, value=1.10,
+            )
+            max_underprediction_rate = st.slider(
+                "Maximum ML underprediction rate", 0.0, 1.0, 0.75, 0.05,
+            )
+            try:
+                options = {
+                    "min_valuations": int(min_valuations),
+                    "max_mae_ratio": float(max_mae_ratio),
+                    "max_underprediction_rate": float(max_underprediction_rate),
+                }
+                assessment = governance_assessment(segments, **options)
+                st.metric("Diagnostic status (not model approval)", assessment["status"])
+                st.dataframe(assessment["checks"], use_container_width=True)
+                st.dataframe(assessment["metrics"], use_container_width=True)
+                st.caption(assessment["limitations"])
+                st.download_button(
+                    "Download governance audit report (JSON)",
+                    report_json(governance_audit_report(
+                        segments, source=portfolio_upload.name, **options,
+                    )),
+                    file_name="portfolio_governance_audit.json",
+                    mime="application/json",
+                )
+            except ValueError as exc:
+                st.info(f"Governance assessment unavailable: {exc}")
         portfolio_cases = portfolio_scenarios(segments, inflation_stress, factor_stress)
         st.dataframe(portfolio_cases, use_container_width=True)
         st.download_button("Download portfolio scenarios (CSV)",
