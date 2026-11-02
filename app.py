@@ -12,6 +12,7 @@ from actuarial_ai.portfolio import portfolio_report, portfolio_scenarios
 from actuarial_ai.portfolio_backtest import portfolio_backtest
 from actuarial_ai.portfolio_governance import governance_assessment, governance_audit_report
 from actuarial_ai.portfolio_io import load_portfolio_csv
+from actuarial_ai.portfolio_pdf import portfolio_pdf_report
 from actuarial_ai.portfolio_risk import simulate_portfolio_risk
 from actuarial_ai.quality import quality_csv, quality_report
 from actuarial_ai.reporting import analysis_report, report_json
@@ -251,6 +252,18 @@ if portfolio_upload is not None:
                 )
             except ValueError as exc:
                 st.info(f"Governance assessment unavailable: {exc}")
+        if st.checkbox("Generate portfolio management PDF report", value=False):
+            try:
+                pdf = portfolio_pdf_report(
+                    segments, source=portfolio_upload.name, seed=int(seed),
+                )
+                st.download_button(
+                    "Download portfolio management report (PDF)", pdf,
+                    file_name="portfolio_management_report.pdf",
+                    mime="application/pdf",
+                )
+            except ValueError as exc:
+                st.warning(f"PDF report unavailable: {exc}")
         portfolio_cases = portfolio_scenarios(segments, inflation_stress, factor_stress)
         st.dataframe(portfolio_cases, use_container_width=True)
         st.download_button("Download portfolio scenarios (CSV)",
