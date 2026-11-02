@@ -20,8 +20,8 @@ def portfolio_risk_sensitivity(
     """
     if not volatilities or not correlations:
         raise ValueError("At least one volatility and correlation is required")
-    if any(not np.isfinite(v) or v < 0 for v in volatilities):
-        raise ValueError("Volatilities must be finite and nonnegative")
+    if any(not np.isfinite(v) or not 0 <= v <= 2 for v in volatilities):
+        raise ValueError("Volatilities must be finite and between 0 and 2")
     if any(not np.isfinite(c) or not 0 <= c <= 1 for c in correlations):
         raise ValueError("Correlations must be finite and between 0 and 1")
     rows = []
@@ -34,7 +34,7 @@ def portfolio_risk_sensitivity(
             rows.append({
                 "volatility": float(volatility),
                 "correlation": float(correlation),
-                "baseline_reserve": float(risk["baseline_reserve"]),
+                "baseline_reserve": float(risk["baseline_total_reserve"]),
                 "mean_reserve": float(risk["mean"]),
                 "var": float(risk["var"]),
                 "expected_shortfall": float(risk["expected_shortfall"]),
