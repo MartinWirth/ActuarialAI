@@ -49,7 +49,8 @@ def test_invalid_inputs_and_incomplete_portfolio():
 
 
 def test_negative_equicorrelation_bound():
-    segments = {str(i): synthetic_triangle(8, seed=i) for i in range(3)}
+    segments = sample()
+    segments["Third"] = sample()["Motor"] * 1.1
     valid = aggregate_mack(segments, correlation=-0.5)
     assert np.isfinite(valid["total_se"])
     with pytest.raises(ValueError, match="correlation"):
