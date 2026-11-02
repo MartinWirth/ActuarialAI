@@ -9,6 +9,7 @@ from actuarial_ai.explainability import factor_feature_importance
 from actuarial_ai.governance import monitoring_report
 from actuarial_ai.ml import holdout_last_diagonal, ml_reserving
 from actuarial_ai.portfolio import portfolio_report, portfolio_scenarios
+from actuarial_ai.portfolio_backtest import portfolio_backtest
 from actuarial_ai.portfolio_io import load_portfolio_csv
 from actuarial_ai.portfolio_risk import simulate_portfolio_risk
 from actuarial_ai.quality import quality_csv, quality_report
@@ -205,6 +206,21 @@ if portfolio_upload is not None:
                 grid.to_csv(index=False).encode("utf-8"),
                 file_name="portfolio_risk_sensitivity.csv", mime="text/csv",
             )
+        if st.checkbox("Run historical portfolio backtest", value=False):
+            try:
+                history = portfolio_backtest(segments)
+                st.caption(history["limitations"])
+                st.dataframe(history["metrics"], use_container_width=True)
+                st.dataframe(history["portfolio"], use_container_width=True)
+                with st.expander("Segment-level historical holdouts"):
+                    st.dataframe(history["by_segment"], use_container_width=True)
+                st.download_button(
+                    "Download historical portfolio backtest (CSV)",
+                    history["portfolio"].to_csv(index=False).encode("utf-8"),
+                    file_name="portfolio_backtest.csv", mime="text/csv",
+                )
+            except ValueError as exc:
+                st.info(f"Portfolio backtest unavailable: {exc}")
         portfolio_cases = portfolio_scenarios(segments, inflation_stress, factor_stress)
         st.dataframe(portfolio_cases, use_container_width=True)
         st.download_button("Download portfolio scenarios (CSV)",
