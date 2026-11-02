@@ -16,6 +16,7 @@ from actuarial_ai.reporting import analysis_report, report_json
 from actuarial_ai.scenarios import scenario_comparison, sensitivity_grid
 from actuarial_ai.shap_explain import shap_factor_explanations
 from actuarial_ai.uncertainty import bootstrap_reserves
+from actuarial_ai.validation import validation_report, validate_models
 
 st.set_page_config(page_title="ActuarialAI | Reserving", layout="wide")
 st.title("ActuarialAI — Chain-Ladder Reserving")
@@ -195,3 +196,20 @@ if portfolio_upload is not None:
                            file_name="portfolio_scenarios.csv", mime="text/csv")
     except (TypeError, ValueError) as exc:
         st.error(f"Invalid portfolio data: {exc}")
+
+st.subheader("Model validation and governance")
+st.caption("Rolling one-step cumulative-paid holdouts; metrics do not validate ultimate reserves.")
+if st.checkbox("Run model validation", value=False):
+    try:
+        validation = validate_models(triangle)
+        st.dataframe(validation["metrics"], use_container_width=True)
+        st.dataframe(validation["by_valuation"], use_container_width=True)
+        st.metric("ML monitoring alerts", validation["alert_count"])
+        st.caption(f"Lowest observed holdout MAE: {validation['preferred_by_mae']}")
+        st.download_button(
+            "Download model validation report (JSON)",
+            report_json(validation_report(triangle, source=source_name)),
+            file_name="model_validation.json", mime="application/json",
+        )
+    except ValueError as exc:
+        st.warning(f"Model validation unavailable: {exc}")
