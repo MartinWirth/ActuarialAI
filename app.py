@@ -29,6 +29,7 @@ from actuarial_ai.governance import monitoring_report
 from actuarial_ai.mack import mack_chain_ladder
 from actuarial_ai.ml import holdout_last_diagonal, ml_reserving
 from actuarial_ai.portfolio import portfolio_report, portfolio_scenarios
+from actuarial_ai.portfolio_mack import aggregate_mack
 from actuarial_ai.portfolio_backtest import portfolio_backtest
 from actuarial_ai.portfolio_governance import (
     governance_assessment,
@@ -394,6 +395,33 @@ if portfolio_upload is not None:
                 )
             except ValueError as exc:
                 st.info(f"Governance assessment unavailable: {exc}")
+        st.subheader("Portfolio Mack risk aggregation (assumption-driven)")
+        st.caption(
+            "Common pairwise correlation is assumed, not estimated. "
+            "Normal intervals are illustrative, not calibrated."
+        )
+        mack_correlation = st.slider(
+            "Assumed Mack cross-segment correlation", 0.0, 1.0, 0.0, 0.05,
+        )
+        if st.checkbox("Calculate aggregate Mack uncertainty", value=False):
+            try:
+                aggregated = aggregate_mack(
+                    segments, correlation=mack_correlation,
+                )
+                ma, mb, mc = st.columns(3)
+                ma.metric("Aggregated Mack S.E.", f"{aggregated['total_se']:,.0f}")
+                mb.metric("Independent Mack S.E.", f"{aggregated['independent_se']:,.0f}")
+                mc.metric(
+                    "Diversification vs standalone S.E.",
+                    f"{aggregated['diversification_benefit']:,.0f}",
+                )
+                st.write(
+                    f"95% approximate interval: {aggregated['lower']:,.0f} "
+                    f"to {aggregated['upper']:,.0f}"
+                )
+                st.dataframe(aggregated["segments"], use_container_width=True)
+            except ValueError as exc:
+                st.warning(f"Portfolio Mack unavailable: {exc}")
         if st.checkbox("Generate configurable portfolio PDF report", value=False):
             with st.expander("Report configuration", expanded=True):
                 show_segments = st.checkbox("Include segment reserves", value=True)
@@ -415,6 +443,7 @@ if portfolio_upload is not None:
                     include_risk=show_risk,
                     include_governance=show_governance,
                     include_mack=show_mack,
+                    mack_correlation=float(mack_correlation),
                     confidence=float(report_confidence),
                     simulations=int(report_simulations),
                     seed=int(seed),
