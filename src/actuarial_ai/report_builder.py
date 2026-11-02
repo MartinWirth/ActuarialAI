@@ -7,7 +7,6 @@ from io import BytesIO
 from xml.sax.saxutils import escape
 
 import pandas as pd
-
 from reportlab.graphics.charts.barcharts import VerticalBarChart
 from reportlab.graphics.shapes import Drawing, String
 from reportlab.lib import colors
