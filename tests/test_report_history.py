@@ -9,14 +9,14 @@ from actuarial_ai.report_history import get_report, list_reports, save_report
 def test_save_list_retrieve_and_compare(tmp_path):
     db = tmp_path / "reports.sqlite3"
     options = ReportOptions()
-    payload = dict(
-        version="abc123", source="example.csv",
-        portfolio_csv=b"segment,origin,development,cumulative_paid\n",
-        pdf=b"%PDF-1.4\ntest",
-        options=options,
-        summary={"baseline_reserve": 100.0, "segments": 1},
-        governance={"status": "REVIEW_REQUIRED"},
-    )
+    payload = {
+        "version": "abc123", "source": "example.csv",
+        "portfolio_csv": b"segment,origin,development,cumulative_paid\n",
+        "pdf": b"%PDF-1.4\ntest",
+        "options": options,
+        "summary": {"baseline_reserve": 100.0, "segments": 1},
+        "governance": {"status": "REVIEW_REQUIRED"},
+    }
     first = save_report(db, **payload)
     second = save_report(
         db, **{**payload, "version": "def456",
