@@ -1,4 +1,7 @@
 from io import BytesIO
+from pathlib import Path
+
+import pandas as pd
 
 from pypdf import PdfReader
 
@@ -11,8 +14,9 @@ from actuarial_ai.report_builder import (
 
 
 def sample():
-    return {"Motor": synthetic_triangle(10, seed=1),
-            "Property": synthetic_triangle(10, seed=1) * 1.2}
+    triangle = pd.read_csv(Path(__file__).parent / "fixtures" / "raa_triangle.csv", index_col=0)
+    triangle = triangle.cummax(axis=1)
+    return {"Motor": triangle, "Property": triangle * 1.2}
 
 
 def test_report_sections_chart_and_version():
