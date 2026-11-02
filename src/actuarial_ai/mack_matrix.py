@@ -10,7 +10,7 @@ from .portfolio_mack import aggregate_mack
 def validate_correlation_matrix(matrix: pd.DataFrame, names: list[str]) -> np.ndarray:
     """Return a correlation array in canonical segment order or raise ValueError."""
     if not isinstance(matrix, pd.DataFrame):
-        raise ValueError("Correlation matrix must be a DataFrame")
+        raise TypeError("Correlation matrix must be a DataFrame")
     if (matrix.index.has_duplicates or matrix.columns.has_duplicates
             or set(matrix.index) != set(names) or set(matrix.columns) != set(names)
             or len(matrix) != len(names)):
