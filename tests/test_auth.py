@@ -1,8 +1,8 @@
 import pytest
 
 from actuarial_ai.approval_workflow import (
-    authenticated_transition,
     audit_events,
+    authenticated_transition,
     report_status,
 )
 from actuarial_ai.auth import (
