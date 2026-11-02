@@ -1,4 +1,5 @@
 """Streamlit entrypoint for the ActuarialAI reserving MVP."""
+import pandas as pd
 import plotly.express as px
 import streamlit as st
 
@@ -27,6 +28,7 @@ from actuarial_ai.data_io import load_triangle, triangle_csv
 from actuarial_ai.explainability import factor_feature_importance
 from actuarial_ai.governance import monitoring_report
 from actuarial_ai.mack import mack_chain_ladder
+from actuarial_ai.mack_matrix import aggregate_mack_matrix, validate_correlation_matrix
 from actuarial_ai.mack_sensitivity import mack_correlation_sensitivity
 from actuarial_ai.ml import holdout_last_diagonal, ml_reserving
 from actuarial_ai.portfolio import portfolio_report, portfolio_scenarios
@@ -404,11 +406,39 @@ if portfolio_upload is not None:
         mack_correlation = st.slider(
             "Assumed Mack cross-segment correlation", 0.0, 1.0, 0.0, 0.05,
         )
+        use_mack_matrix = st.checkbox(
+            "Use custom pairwise Mack correlation matrix", value=False,
+        )
+        custom_mack_matrix = None
+        if use_mack_matrix:
+            names = sorted(segments)
+            default_matrix = pd.DataFrame(
+                [[1.0 if a == b else float(mack_correlation)
+                  for b in names] for a in names],
+                index=names, columns=names,
+            )
+            edited_matrix = st.data_editor(
+                default_matrix, key="mack_pairwise_matrix",
+                use_container_width=True,
+            )
+            try:
+                checked = validate_correlation_matrix(edited_matrix, names)
+                custom_mack_matrix = pd.DataFrame(
+                    checked, index=names, columns=names,
+                )
+                st.success("Correlation matrix is positive semidefinite.")
+            except ValueError as exc:
+                st.warning(f"Invalid correlation matrix: {exc}")
         if st.checkbox("Calculate aggregate Mack uncertainty", value=False):
             try:
-                aggregated = aggregate_mack(
-                    segments, correlation=mack_correlation,
-                )
+                if use_mack_matrix:
+                    if custom_mack_matrix is None:
+                        raise ValueError("Correct the correlation matrix first")
+                    aggregated = aggregate_mack_matrix(segments, custom_mack_matrix)
+                else:
+                    aggregated = aggregate_mack(
+                        segments, correlation=mack_correlation,
+                    )
                 ma, mb, mc = st.columns(3)
                 ma.metric("Aggregated Mack S.E.", f"{aggregated['total_se']:,.0f}")
                 mb.metric("Independent Mack S.E.", f"{aggregated['independent_se']:,.0f}")
@@ -466,10 +496,18 @@ if portfolio_upload is not None:
                     include_mack=show_mack,
                     include_mack_sensitivity=show_mack and show_mack_sensitivity,
                     mack_correlation=float(mack_correlation),
+                    mack_matrix=(
+                        tuple(tuple(float(v) for v in row)
+                              for row in custom_mack_matrix.to_numpy())
+                        if show_mack and use_mack_matrix and custom_mack_matrix is not None
+                        else None
+                    ),
                     confidence=float(report_confidence),
                     simulations=int(report_simulations),
                     seed=int(seed),
                 )
+                if show_mack and use_mack_matrix and custom_mack_matrix is None:
+                    raise ValueError("Correct the correlation matrix before PDF export")
                 pdf, version = configurable_portfolio_pdf(
                     segments, source=portfolio_upload.name, options=settings,
                 )
