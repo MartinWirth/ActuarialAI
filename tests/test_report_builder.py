@@ -2,7 +2,6 @@ from io import BytesIO
 from pathlib import Path
 
 import pandas as pd
-
 from pypdf import PdfReader
 
 from actuarial_ai import synthetic_triangle
@@ -76,8 +75,6 @@ def test_optional_mack_section_in_pdf():
 
 
 def test_mack_section_reports_unavailable_segment():
-    from actuarial_ai import synthetic_triangle
-
     segments = {"Too short": synthetic_triangle(3), "Motor": synthetic_triangle(8)}
     pdf, _ = configurable_portfolio_pdf(
         segments, options=ReportOptions(
