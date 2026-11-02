@@ -18,7 +18,7 @@ def synthetic_triangle(n: int = 8, seed: int = 42) -> pd.DataFrame:
     return pd.DataFrame(values, index=[f"AY{2026-n+i}" for i in range(n)], columns=[f"D{j+1}" for j in range(n)])
 
 
-def chain_ladder(triangle: pd.DataFrame) -> dict:
+def chain_ladder(triangle: pd.DataFrame, *, allow_decrease: bool = False) -> dict:
     """Volume-weighted chain ladder; returns factors, completed triangle and reserves."""
     arr = triangle.to_numpy(dtype=float)
     n, m = arr.shape
@@ -28,7 +28,7 @@ def chain_ladder(triangle: pd.DataFrame) -> dict:
         expected = n - i
         if not np.all(np.isfinite(arr[i, :expected])) or not np.all(np.isnan(arr[i, expected:])):
             raise ValueError("Expected contiguous observed cells and missing future cells")
-        if np.any(arr[i, :expected] < 0) or np.any(np.diff(arr[i, :expected]) < 0):
+        if np.any(arr[i, :expected] < 0) or (not allow_decrease and np.any(np.diff(arr[i, :expected]) < 0)):
             raise ValueError("Cumulative claims must be nonnegative and nondecreasing")
     factors = []
     for j in range(m - 1):
