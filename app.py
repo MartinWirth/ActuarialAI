@@ -13,6 +13,7 @@ from actuarial_ai.portfolio_io import load_portfolio_csv
 from actuarial_ai.portfolio_risk import simulate_portfolio_risk
 from actuarial_ai.quality import quality_csv, quality_report
 from actuarial_ai.reporting import analysis_report, report_json
+from actuarial_ai.risk_sensitivity import portfolio_risk_sensitivity
 from actuarial_ai.scenarios import scenario_comparison, sensitivity_grid
 from actuarial_ai.shap_explain import shap_factor_explanations
 from actuarial_ai.uncertainty import bootstrap_reserves
@@ -188,6 +189,21 @@ if portfolio_upload is not None:
                 "Download Monte Carlo simulations (CSV)",
                 simulation_table.to_csv(index=False).encode("utf-8"),
                 file_name="portfolio_monte_carlo.csv", mime="text/csv",
+            )
+        if st.checkbox("Run portfolio risk sensitivity grid", value=False):
+            grid = portfolio_risk_sensitivity(
+                segments, simulations=2000, confidence=0.95, seed=int(seed),
+            )
+            st.caption("Assumption scenarios: volatility × latent correlation; not calibrated.")
+            st.dataframe(grid, use_container_width=True)
+            st.dataframe(
+                grid.pivot(index="volatility", columns="correlation", values="var"),
+                use_container_width=True,
+            )
+            st.download_button(
+                "Download portfolio risk sensitivity (CSV)",
+                grid.to_csv(index=False).encode("utf-8"),
+                file_name="portfolio_risk_sensitivity.csv", mime="text/csv",
             )
         portfolio_cases = portfolio_scenarios(segments, inflation_stress, factor_stress)
         st.dataframe(portfolio_cases, use_container_width=True)
