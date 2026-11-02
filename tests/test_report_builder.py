@@ -51,3 +51,35 @@ def test_version_tracks_input_and_configuration():
     modified = sample()
     modified["Motor"].iat[0, 0] *= 1.01
     assert identity != report_identity(modified, ReportOptions())
+
+
+def test_optional_mack_section_in_pdf():
+    pdf, version = configurable_portfolio_pdf(
+        sample(), options=ReportOptions(
+            include_mack=True, include_risk=False,
+            include_governance=False, simulations=100,
+        ),
+    )
+    text = "\n".join(p.extract_text() for p in PdfReader(BytesIO(pdf)).pages)
+    assert "Mack Chain-Ladder prediction uncertainty" in text
+    assert "Mack S.E." in text
+    assert "Normal intervals are" in text
+    assert "no portfolio Mack standard error" in text
+    assert version != report_identity(sample(), ReportOptions(
+        include_mack=False, include_risk=False,
+        include_governance=False, simulations=100,
+    ))
+
+
+def test_mack_section_reports_unavailable_segment():
+    from actuarial_ai import synthetic_triangle
+
+    segments = {"Too short": synthetic_triangle(3), "Motor": synthetic_triangle(8)}
+    pdf, _ = configurable_portfolio_pdf(
+        segments, options=ReportOptions(
+            include_mack=True, include_risk=False, include_governance=False,
+        ),
+    )
+    text = "\n".join(p.extract_text() for p in PdfReader(BytesIO(pdf)).pages)
+    assert "Too short: Mack unavailable" in text
+    assert "Motor" in text
