@@ -13,6 +13,7 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
+from .mack import mack_chain_ladder
 from .portfolio import portfolio_report
 from .portfolio_governance import governance_assessment
 from .portfolio_risk import simulate_portfolio_risk
@@ -24,6 +25,7 @@ class ReportOptions:
     include_risk: bool = True
     include_governance: bool = True
     include_charts: bool = True
+    include_mack: bool = False
     simulations: int = 2000
     confidence: float = 0.95
     seed: int = 42
@@ -127,6 +129,51 @@ def configurable_portfolio_pdf(
         story.append(table)
         if options.include_charts:
             story.append(_reserve_chart(portfolio["segments"]))
+    if options.include_mack:
+        story.extend([
+            Spacer(1, 10),
+            Paragraph("Mack Chain-Ladder prediction uncertainty", styles["Heading2"]),
+            Paragraph(
+                f"Nominal normal-approximation interval: {options.confidence:.0%}. "
+                "Segment-level estimates only; no portfolio Mack standard error "
+                "or aggregate interval is calculated.", styles["Normal"],
+            ),
+        ])
+        mack_rows = [["Segment", "Reserve", "Mack S.E.", "Lower", "Upper"]]
+        for name, triangle in sorted(segments.items()):
+            try:
+                estimate = mack_chain_ladder(triangle, confidence=options.confidence)
+            except ValueError as exc:
+                story.append(Paragraph(
+                    f"{escape(str(name))}: Mack unavailable - {escape(str(exc))}",
+                    styles["Normal"],
+                ))
+                continue
+            mack_rows.append([
+                Paragraph(escape(str(name)), styles["Normal"]),
+                f"{estimate['total_reserve']:,.0f}",
+                f"{estimate['total_se']:,.0f}",
+                f"{estimate['total_lower']:,.0f}",
+                f"{estimate['total_upper']:,.0f}",
+            ])
+        if len(mack_rows) > 1:
+            mack_table = Table(
+                mack_rows, colWidths=[140, 90, 90, 85, 85], repeatRows=1,
+            )
+            mack_table.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E6EDF5")),
+                ("GRID", (0, 0), (-1, -1), 0.3, colors.lightgrey),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]))
+            story.append(mack_table)
+        story.append(Paragraph(
+            "Assumptions: independent origin periods within each segment; "
+            "conditional variance proportional to cumulative paid; final-age "
+            "variance extrapolated; no tail factor. Normal intervals are "
+            "illustrative, truncated at zero, and not calibrated. "
+            "Cross-segment dependence is not estimated.",
+            styles["Normal"],
+        ))
     if risk is not None:
         story.extend([
             Spacer(1, 10), Paragraph("Illustrative portfolio risk", styles["Heading2"]),
@@ -173,7 +220,9 @@ def configurable_portfolio_pdf(
             "One-step paid-claims diagnostics do not validate ultimate reserves. "
             "Monte Carlo volatility and correlation are assumed, not calibrated. "
             "VaR/Expected Shortfall are not regulatory capital. Diagnostic status "
-            "does not imply approval. Independent actuarial review is required.",
+            "does not imply approval. Mack normal intervals are not calibrated "
+            "and cross-segment Mack uncertainty is not aggregated. "
+            "Independent actuarial review is required.",
             styles["Normal"],
         ),
     ])
