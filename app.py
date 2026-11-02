@@ -400,6 +400,7 @@ if portfolio_upload is not None:
                 show_charts = st.checkbox("Include reserve chart", value=True)
                 show_risk = st.checkbox("Include Monte Carlo risk", value=True)
                 show_governance = st.checkbox("Include governance", value=True)
+                show_mack = st.checkbox("Include Mack uncertainty by segment", value=True)
                 report_confidence = st.selectbox(
                     "Report risk confidence", [0.90, 0.95, 0.99], index=1,
                 )
@@ -413,6 +414,7 @@ if portfolio_upload is not None:
                     include_charts=show_charts,
                     include_risk=show_risk,
                     include_governance=show_governance,
+                    include_mack=show_mack,
                     confidence=float(report_confidence),
                     simulations=int(report_simulations),
                     seed=int(seed),
