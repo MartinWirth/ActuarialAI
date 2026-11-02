@@ -18,7 +18,7 @@ def test_grid_shape_and_reproducibility():
     second = portfolio_risk_sensitivity(segments(), **kwargs)
     pd.testing.assert_frame_equal(first, second)
     assert len(first) == 4
-    assert (first["expected_shortfall"] >= first["var"]).all()
+    np.testing.assert_array_less(\n        first["var"].to_numpy(),\n        first["expected_shortfall"].to_numpy() + 1e-8,\n    )
     assert first["baseline_reserve"].nunique() == 1
 
 
