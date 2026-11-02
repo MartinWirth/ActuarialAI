@@ -11,6 +11,7 @@ from actuarial_ai.approval_workflow import (
     verify_audit_chain,
 )
 from actuarial_ai.auth import (
+    change_password,
     create_user,
     has_users,
     identity,
@@ -18,6 +19,8 @@ from actuarial_ai.auth import (
     login,
     logout,
     require_permission,
+    security_events,
+    set_user_active,
 )
 from actuarial_ai.backtest import backtest_metrics, rolling_backtest
 from actuarial_ai.data_io import load_triangle, triangle_csv
@@ -87,6 +90,20 @@ if st.sidebar.button("Sign out"):
     st.session_state.pop("auth_token", None)
     st.rerun()
 
+with st.sidebar.expander("Change password"):
+    with st.form("password_change"):
+        old_pw = st.text_input("Current password", type="password")
+        new_pw = st.text_input("New password (12+ characters)", type="password")
+        update_pw = st.form_submit_button("Change password")
+    if update_pw:
+        try:
+            change_password(DB_PATH, session_token, old_pw, new_pw)
+            st.session_state.pop("auth_token", None)
+            st.success("Password changed; all sessions revoked. Sign in again.")
+            st.rerun()
+        except (ValueError, PermissionError) as exc:
+            st.error(str(exc))
+
 if current_user["role"] == "ADMIN":
     with st.sidebar.expander("User administration"):
         with st.form("new_user"):
@@ -105,7 +122,23 @@ if current_user["role"] == "ADMIN":
                 st.success("Account created")
             except (ValueError, PermissionError) as exc:
                 st.error(str(exc))
-        st.dataframe(list_users(DB_PATH, session_token))
+        accounts = list_users(DB_PATH, session_token)
+        st.dataframe(accounts)
+        with st.form("account_state"):
+            account_name = st.selectbox(
+                "Account", [account["username"] for account in accounts],
+            )
+            enabled = st.checkbox("Account enabled", value=True)
+            apply_state = st.form_submit_button("Apply account status")
+        if apply_state:
+            try:
+                set_user_active(DB_PATH, session_token, account_name, enabled)
+                st.success("Account status updated")
+                st.rerun()
+            except (ValueError, PermissionError) as exc:
+                st.error(str(exc))
+        st.caption("Recent security events (no passwords or session tokens)")
+        st.dataframe(security_events(DB_PATH, session_token, limit=50))
 
 
 st.caption("Educational demonstration with synthetic cumulative paid claims; not for production actuarial decisions.")
@@ -410,7 +443,7 @@ if portfolio_upload is not None:
 st.subheader("Saved portfolio report history (local SQLite)")
 st.caption(
     "Reports are saved only when requested. The database is local to this "
-    "Streamlit server; it has no authentication or encryption."
+    "Streamlit server; login is required but database encryption is not enabled."
 )
 try:
     saved_reports = list_reports("data/actuarialai_reports.sqlite3")
