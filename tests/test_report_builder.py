@@ -12,7 +12,7 @@ from actuarial_ai.report_builder import (
 
 def sample():
     return {"Motor": synthetic_triangle(10, seed=1),
-            "Property": synthetic_triangle(9, seed=2)}
+            "Property": synthetic_triangle(10, seed=1) * 1.2}
 
 
 def test_report_sections_chart_and_version():
