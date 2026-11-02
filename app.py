@@ -3,6 +3,13 @@ import plotly.express as px
 import streamlit as st
 
 from actuarial_ai import chain_ladder, synthetic_triangle
+from actuarial_ai.approval_workflow import (
+    audit_export,
+    audit_events,
+    report_status,
+    transition_report,
+    verify_audit_chain,
+)
 from actuarial_ai.backtest import backtest_metrics, rolling_backtest
 from actuarial_ai.data_io import load_triangle, triangle_csv
 from actuarial_ai.explainability import factor_feature_importance
@@ -371,6 +378,56 @@ try:
                 file_name=f"portfolio_source_{selected_id}.csv",
                 mime="text/csv",
             )
+            st.subheader("Report governance workflow (local demonstration)")
+            try:
+                current_status = report_status(
+                    "data/actuarialai_reports.sqlite3", selected_id,
+                )
+                st.metric("Approval workflow status", current_status)
+                history_events = audit_events(
+                    "data/actuarialai_reports.sqlite3", selected_id,
+                )
+                st.caption(
+                    "Actor names are self-declared; no login or access controls. "
+                    "Hash chain detects some modifications but cannot prevent "
+                    "database replacement or privileged tampering."
+                )
+                if history_events:
+                    st.dataframe(history_events, use_container_width=True)
+                st.caption(
+                    "Audit chain integrity: "
+                    + ("valid" if verify_audit_chain(history_events) else "INVALID")
+                )
+                st.download_button(
+                    "Download approval audit log (JSON)",
+                    audit_export("data/actuarialai_reports.sqlite3", selected_id),
+                    file_name=f"approval_audit_{selected_id}.json",
+                    mime="application/json",
+                )
+                allowed = {
+                    "DRAFT": ["IN_REVIEW"],
+                    "IN_REVIEW": ["APPROVED", "REJECTED"],
+                    "REJECTED": ["IN_REVIEW"],
+                    "APPROVED": [],
+                }[current_status]
+                if allowed:
+                    with st.form(f"approval_transition_{selected_id}"):
+                        reviewer = st.text_input("Reviewer / actor name")
+                        decision = st.selectbox("Next workflow status", allowed)
+                        justification = st.text_area("Reason / review notes")
+                        submit_decision = st.form_submit_button("Record decision")
+                    if submit_decision:
+                        try:
+                            transition_report(
+                                "data/actuarialai_reports.sqlite3", selected_id,
+                                reviewer, decision, justification,
+                            )
+                            st.success("Decision recorded in append-only audit log.")
+                            st.rerun()
+                        except (OSError, ValueError) as exc:
+                            st.error(f"Decision not recorded: {exc}")
+            except (OSError, ValueError) as exc:
+                st.error(f"Governance workflow unavailable: {exc}")
         if len(saved_reports) > 1:
             first, second = st.columns(2)
             ids = [item["id"] for item in saved_reports]
