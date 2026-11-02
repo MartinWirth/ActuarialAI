@@ -14,6 +14,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from .mack import mack_chain_ladder
+from .mack_sensitivity import mack_correlation_sensitivity
 from .portfolio import portfolio_report
 from .portfolio_governance import governance_assessment
 from .portfolio_mack import aggregate_mack
@@ -27,6 +28,7 @@ class ReportOptions:
     include_governance: bool = True
     include_charts: bool = True
     include_mack: bool = False
+    include_mack_sensitivity: bool = False
     mack_correlation: float = 0.0
     simulations: int = 2000
     confidence: float = 0.95
@@ -189,6 +191,46 @@ def configurable_portfolio_pdf(
                 f"{aggregate['diversification_benefit']:,.2f}.",
                 styles["Normal"],
             ))
+        if options.include_mack_sensitivity:
+            story.append(Spacer(1, 8))
+            story.append(Paragraph(
+                "Mack correlation sensitivity", styles["Heading3"],
+            ))
+            try:
+                sensitivity = mack_correlation_sensitivity(
+                    segments, confidence=options.confidence,
+                )
+            except ValueError as exc:
+                story.append(Paragraph(
+                    f"Sensitivity unavailable: {escape(str(exc))}",
+                    styles["Normal"],
+                ))
+            else:
+                sensitivity_rows = [[
+                    "Corr.", "Portfolio S.E.", "Lower", "Upper", "Diversification",
+                ]]
+                for _, item in sensitivity.iterrows():
+                    sensitivity_rows.append([
+                        f"{item['correlation']:.2f}",
+                        f"{item['total_se']:,.0f}",
+                        f"{item['lower']:,.0f}",
+                        f"{item['upper']:,.0f}",
+                        f"{item['diversification_benefit']:,.0f}",
+                    ])
+                sensitivity_table = Table(
+                    sensitivity_rows, colWidths=[65, 100, 100, 100, 125],
+                    repeatRows=1,
+                )
+                sensitivity_table.setStyle(TableStyle([
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E6EDF5")),
+                    ("GRID", (0, 0), (-1, -1), 0.3, colors.lightgrey),
+                ]))
+                story.append(sensitivity_table)
+                story.append(Paragraph(
+                    "Illustrative scenarios: common pairwise correlations "
+                    "0, 0.25, 0.50, 0.75, 1.00; not empirically calibrated.",
+                    styles["Normal"],
+                ))
         story.append(Paragraph(
             "Assumptions: independent origin periods within each segment; "
             "conditional variance proportional to cumulative paid; final-age "
