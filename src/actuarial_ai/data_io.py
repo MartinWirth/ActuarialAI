@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 
 
-def validate_triangle(triangle: pd.DataFrame) -> pd.DataFrame:
+def validate_triangle(triangle: pd.DataFrame, *, allow_decrease: bool = False) -> pd.DataFrame:
     """Return a numeric, strictly shaped triangle suitable for chain-ladder."""
     if not isinstance(triangle, pd.DataFrame):
         raise TypeError("Expected a DataFrame")
@@ -28,7 +28,7 @@ def validate_triangle(triangle: pd.DataFrame) -> pd.DataFrame:
             raise ValueError(f"Missing or non-finite observed claims in origin row {i + 1}")
         if not np.isnan(future).all():
             raise ValueError(f"Future cells must be empty in origin row {i + 1}")
-        if (observed < 0).any() or (np.diff(observed) < 0).any():
+        if (observed < 0).any() or (not allow_decrease and (np.diff(observed) < 0).any()):
             raise ValueError(f"Cumulative claims must be nonnegative and nondecreasing in origin row {i + 1}")
     for age in range(n - 1):
         if arr[: n - age - 1, age].sum() <= 0:
