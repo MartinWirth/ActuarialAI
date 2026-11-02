@@ -70,3 +70,7 @@ With a validated multi-segment CSV uploaded, enable **Run portfolio Monte Carlo*
 ## Phase 10 — model validation and governance
 
 Enable **Run model validation** in Streamlit to compare Chain-Ladder and Random Forest on identical rolling holdouts. View overall and valuation-level errors, threshold alerts, and download a reproducible JSON report with a SHA-256 input fingerprint and model specifications. See [methodology and limitations](docs/model-validation.md).
+
+## Phase 11 — portfolio risk sensitivity
+
+With a portfolio CSV loaded, enable **Run portfolio risk sensitivity grid** to compare Monte Carlo portfolio reserve VaR and Expected Shortfall over volatility assumptions (10%, 20%, 30%) and cross-segment latent correlation assumptions (0%, 25%, 75%). All grid cells use the same random seed and simulation count for a consistent illustrative comparison. The grid and a VaR pivot table are displayed and the full results can be downloaded as CSV. The results are assumption-driven, not empirically calibrated; they must not be interpreted as regulatory capital estimates.
