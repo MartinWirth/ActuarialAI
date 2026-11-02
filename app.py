@@ -160,6 +160,34 @@ if portfolio_upload is not None:
         st.download_button("Download portfolio segment report (CSV)",
                            portfolio["segments"].to_csv(index=False).encode("utf-8"),
                            file_name="portfolio_segments.csv", mime="text/csv")
+        st.subheader("Portfolio Monte Carlo risk (experimental)")
+        st.caption("Illustrative correlated lognormal reserve shocks, not a calibrated predictive model.")
+        if st.checkbox("Run portfolio Monte Carlo", value=False):
+            simulations = st.slider("Portfolio Monte Carlo simulations", 500, 10000, 2000, 500)
+            volatility = st.slider("Reserve volatility (%)", 0, 100, 20, 5) / 100
+            correlation = st.slider("Cross-segment latent correlation", 0.0, 1.0, 0.25, 0.05)
+            confidence = st.selectbox("Risk quantile", [0.90, 0.95, 0.99], index=1)
+            risk = simulate_portfolio_risk(
+                segments, simulations=simulations, volatility=volatility,
+                correlation=correlation, confidence=confidence, seed=int(seed),
+            )
+            mc1, mc2, mc3 = st.columns(3)
+            mc1.metric("Simulated mean reserve", f"{risk['mean']:,.0f}")
+            mc2.metric("Reserve VaR", f"{risk['var']:,.0f}")
+            mc3.metric("Expected shortfall", f"{risk['expected_shortfall']:,.0f}")
+            st.plotly_chart(
+                px.histogram(x=risk["portfolio_samples"], nbins=50,
+                             labels={"x": "Simulated portfolio reserve"}),
+                use_container_width=True,
+            )
+            st.dataframe(risk["segment_summary"], use_container_width=True)
+            simulation_table = risk["samples"].copy()
+            simulation_table["portfolio_total"] = risk["portfolio_samples"]
+            st.download_button(
+                "Download Monte Carlo simulations (CSV)",
+                simulation_table.to_csv(index=False).encode("utf-8"),
+                file_name="portfolio_monte_carlo.csv", mime="text/csv",
+            )
         portfolio_cases = portfolio_scenarios(segments, inflation_stress, factor_stress)
         st.dataframe(portfolio_cases, use_container_width=True)
         st.download_button("Download portfolio scenarios (CSV)",
