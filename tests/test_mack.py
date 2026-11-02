@@ -69,7 +69,7 @@ def test_raa_published_reference_regression():
     np.testing.assert_allclose(summary["mack_se"], expected_se, atol=0.51)
     np.testing.assert_allclose(
         summary["reserve"],
-        chain_ladder(triangle)["summary"]["reserve"],
+        chain_ladder(triangle, allow_decrease=True)["summary"]["reserve"],
         rtol=1e-12,
         atol=1e-9,
     )
