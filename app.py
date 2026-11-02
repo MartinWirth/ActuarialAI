@@ -10,6 +10,7 @@ from actuarial_ai.governance import monitoring_report
 from actuarial_ai.ml import holdout_last_diagonal, ml_reserving
 from actuarial_ai.portfolio import portfolio_report, portfolio_scenarios
 from actuarial_ai.portfolio_io import load_portfolio_csv
+from actuarial_ai.portfolio_risk import simulate_portfolio_risk
 from actuarial_ai.quality import quality_csv, quality_report
 from actuarial_ai.reporting import analysis_report, report_json
 from actuarial_ai.scenarios import scenario_comparison, sensitivity_grid
