@@ -82,3 +82,7 @@ With a portfolio CSV uploaded, enable **Run historical portfolio backtest** to c
 ## Phase 13 — portfolio model governance
 
 Enable **Run portfolio model governance assessment** after uploading a portfolio CSV. Configure minimum historical valuation periods, maximum Random Forest / Chain-Ladder MAE ratio and maximum underprediction rate. The dashboard shows diagnostic check outcomes and exports a JSON audit report with an input SHA-256 fingerprint. A diagnostic pass is **not** model approval or actuarial sign-off. See [governance criteria and limitations](docs/portfolio-governance.md).
+
+## Example portfolio CSV
+
+Use [`example/portfolio_example.csv`](example/portfolio_example.csv) to try the multi-segment upload in Streamlit. It contains **synthetic** cumulative paid claims for Motor, Property and Liability (10 origin periods per segment, 165 long-form records). Upload it using **Portfolio CSV** to explore portfolio reserving, Monte Carlo, sensitivity, historical backtesting and governance. No real claims or personal data are included.
