@@ -7,3 +7,7 @@ __pycache__/
 # Streamlit agent skills (environment-specific symlinks)
 .agents\skills/developing-with-streamlit
 .claude\skills/developing-with-streamlit
+
+# Local report history (may contain sensitive portfolio data)
+data/*.sqlite3
+data/*.sqlite3-*
