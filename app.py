@@ -12,10 +12,10 @@ from actuarial_ai.portfolio import portfolio_report, portfolio_scenarios
 from actuarial_ai.portfolio_backtest import portfolio_backtest
 from actuarial_ai.portfolio_governance import governance_assessment, governance_audit_report
 from actuarial_ai.portfolio_io import load_portfolio_csv
-from actuarial_ai.portfolio_pdf import portfolio_pdf_report
 from actuarial_ai.portfolio_risk import simulate_portfolio_risk
 from actuarial_ai.quality import quality_csv, quality_report
 from actuarial_ai.reporting import analysis_report, report_json
+from actuarial_ai.report_builder import ReportOptions, configurable_portfolio_pdf
 from actuarial_ai.risk_sensitivity import portfolio_risk_sensitivity
 from actuarial_ai.scenarios import scenario_comparison, sensitivity_grid
 from actuarial_ai.shap_explain import shap_factor_explanations
@@ -252,14 +252,36 @@ if portfolio_upload is not None:
                 )
             except ValueError as exc:
                 st.info(f"Governance assessment unavailable: {exc}")
-        if st.checkbox("Generate portfolio management PDF report", value=False):
-            try:
-                pdf = portfolio_pdf_report(
-                    segments, source=portfolio_upload.name, seed=int(seed),
+        if st.checkbox("Generate configurable portfolio PDF report", value=False):
+            with st.expander("Report configuration", expanded=True):
+                show_segments = st.checkbox("Include segment reserves", value=True)
+                show_charts = st.checkbox("Include reserve chart", value=True)
+                show_risk = st.checkbox("Include Monte Carlo risk", value=True)
+                show_governance = st.checkbox("Include governance", value=True)
+                report_confidence = st.selectbox(
+                    "Report risk confidence", [0.90, 0.95, 0.99], index=1,
                 )
+                report_simulations = st.number_input(
+                    "Report simulations", min_value=100, max_value=20000,
+                    value=2000, step=100,
+                )
+            try:
+                settings = ReportOptions(
+                    include_segments=show_segments,
+                    include_charts=show_charts,
+                    include_risk=show_risk,
+                    include_governance=show_governance,
+                    confidence=float(report_confidence),
+                    simulations=int(report_simulations),
+                    seed=int(seed),
+                )
+                pdf, version = configurable_portfolio_pdf(
+                    segments, source=portfolio_upload.name, options=settings,
+                )
+                st.caption(f"Report version (SHA-256): {version}")
                 st.download_button(
-                    "Download portfolio management report (PDF)", pdf,
-                    file_name="portfolio_management_report.pdf",
+                    "Download configured portfolio report (PDF)", pdf,
+                    file_name=f"portfolio_report_{version[:12]}.pdf",
                     mime="application/pdf",
                 )
             except ValueError as exc:
