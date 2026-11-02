@@ -6,12 +6,15 @@ from actuarial_ai.approval_workflow import (
     report_status,
 )
 from actuarial_ai.auth import (
+    change_password,
     create_user,
     identity,
     list_users,
     login,
     logout,
     require_permission,
+    security_events,
+    set_user_active,
 )
 from actuarial_ai.report_builder import ReportOptions
 from actuarial_ai.report_history import save_report
@@ -98,3 +101,42 @@ def test_bootstrap_validation(tmp_path):
         create_user(db, "actuary", "long-enough-password", "ACTUARY")
     with pytest.raises(ValueError):
         create_user(db, "admin", "short", "ADMIN")
+
+
+def test_failed_login_lockout_and_security_log(setup_accounts):
+    db, _, admin = setup_accounts
+    for _ in range(5):
+        with pytest.raises(PermissionError):
+            login(db, "actuary", "wrong-password")
+    with pytest.raises(PermissionError):
+        login(db, "actuary", "very-long-actuary-password")
+    events = security_events(db, admin)
+    assert any(event["event"] == "LOGIN_LOCKOUT" for event in events)
+    assert all("password" not in event for event in events)
+
+
+def test_password_change_revokes_all_sessions(setup_accounts):
+    db, _, _ = setup_accounts
+    token = login(db, "actuary", "very-long-actuary-password")
+    second = login(db, "actuary", "very-long-actuary-password")
+    with pytest.raises(PermissionError):
+        change_password(db, token, "wrong", "a-long-new-password")
+    change_password(db, token, "very-long-actuary-password", "a-long-new-password")
+    assert identity(db, token) is None
+    assert identity(db, second) is None
+    with pytest.raises(PermissionError):
+        login(db, "actuary", "very-long-actuary-password")
+    assert identity(db, login(db, "actuary", "a-long-new-password")) is not None
+
+
+def test_deactivation_revokes_sessions(setup_accounts):
+    db, _, admin = setup_accounts
+    token = login(db, "auditor", "very-long-auditor-password")
+    set_user_active(db, admin, "auditor", False)
+    assert identity(db, token) is None
+    with pytest.raises(PermissionError):
+        login(db, "auditor", "very-long-auditor-password")
+    set_user_active(db, admin, "auditor", True)
+    assert identity(db, login(db, "auditor", "very-long-auditor-password"))
+    with pytest.raises(ValueError):
+        set_user_active(db, admin, "admin", False)
