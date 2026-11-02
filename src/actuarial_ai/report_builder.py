@@ -14,6 +14,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from .mack import mack_chain_ladder
+from .mack_matrix import aggregate_mack_matrix
 from .mack_sensitivity import mack_correlation_sensitivity
 from .portfolio import portfolio_report
 from .portfolio_governance import governance_assessment
@@ -30,6 +31,7 @@ class ReportOptions:
     include_mack: bool = False
     include_mack_sensitivity: bool = False
     mack_correlation: float = 0.0
+    mack_matrix: tuple[tuple[float, ...], ...] | None = None
     simulations: int = 2000
     confidence: float = 0.95
     seed: int = 42
@@ -139,7 +141,9 @@ def configurable_portfolio_pdf(
             Paragraph("Mack Chain-Ladder prediction uncertainty", styles["Heading2"]),
             Paragraph(
                 f"Nominal normal-approximation interval: {options.confidence:.0%}. "
-                f"Assumed cross-segment correlation: {options.mack_correlation:.2f}. "
+                + ("Assumed pairwise correlation matrix. "
+                   if options.mack_matrix is not None else
+                   f"Assumed cross-segment correlation: {options.mack_correlation:.2f}. ") + 
                 "Portfolio aggregation is assumption-driven.", styles["Normal"],
             ),
         ])
@@ -171,10 +175,17 @@ def configurable_portfolio_pdf(
             ]))
             story.append(mack_table)
         try:
-            aggregate = aggregate_mack(
-                segments, correlation=options.mack_correlation,
-                confidence=options.confidence,
-            )
+            if options.mack_matrix is None:
+                aggregate = aggregate_mack(
+                    segments, correlation=options.mack_correlation,
+                    confidence=options.confidence,
+                )
+            else:
+                names = sorted(segments)
+                matrix = pd.DataFrame(options.mack_matrix, index=names, columns=names)
+                aggregate = aggregate_mack_matrix(
+                    segments, matrix, confidence=options.confidence,
+                )
         except ValueError as exc:
             story.append(Paragraph(
                 f"Portfolio Mack aggregation unavailable: {escape(str(exc))}",
@@ -231,6 +242,16 @@ def configurable_portfolio_pdf(
                     "0, 0.25, 0.50, 0.75, 1.00; not empirically calibrated.",
                     styles["Normal"],
                 ))
+        if options.mack_matrix is not None:
+            story.append(Paragraph(
+                "Pairwise correlation matrix (assumed, not calibrated)",
+                styles["Heading3"],
+            ))
+            names = sorted(segments)
+            rows = [["Segment", *names]]
+            for name, values in zip(names, options.mack_matrix):
+                rows.append([name, *(f"{v:.2f}" for v in values)])
+            story.append(Table(rows, repeatRows=1))
         story.append(Paragraph(
             "Assumptions: independent origin periods within each segment; "
             "conditional variance proportional to cumulative paid; final-age "
