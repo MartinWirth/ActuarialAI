@@ -66,3 +66,7 @@ Upload long-form portfolio CSVs to aggregate independently validated segment res
 ## Phase 9 — portfolio Monte Carlo risk
 
 With a validated multi-segment CSV uploaded, enable **Run portfolio Monte Carlo** in Streamlit to explore assumed reserve volatility and latent cross-segment correlation. Review simulated reserve VaR and Expected Shortfall, a distribution chart, and segment-level outcomes. Download simulated reserves as CSV. This is an educational assumption-driven model, not a calibrated actuarial capital model. See [methodology and limitations](docs/portfolio-risk.md).
+
+## Phase 10 — model validation and governance
+
+Enable **Run model validation** in Streamlit to compare Chain-Ladder and Random Forest on identical rolling holdouts. View overall and valuation-level errors, threshold alerts, and download a reproducible JSON report with a SHA-256 input fingerprint and model specifications. See [methodology and limitations](docs/model-validation.md).
