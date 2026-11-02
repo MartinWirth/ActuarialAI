@@ -57,3 +57,14 @@ def test_excel_roundtrip():
     triangle.to_excel(output)
     restored = load_triangle(output.getvalue(), "triangle.xlsx")
     pd.testing.assert_frame_equal(triangle, restored, check_dtype=False)
+
+
+def test_decrease_can_be_allowed_explicitly():
+    triangle = synthetic_triangle(6)
+    triangle.iloc[0, 1] = triangle.iloc[0, 0] * 0.99
+    validated = validate_triangle(triangle, allow_decrease=True)
+    assert validated.iloc[0, 1] < validated.iloc[0, 0]
+    with pytest.raises(ValueError, match="nondecreasing"):
+        validate_triangle(triangle)
+    with pytest.raises(ValueError, match="nondecreasing"):
+        load_triangle(triangle_csv(triangle), "triangle.csv")
