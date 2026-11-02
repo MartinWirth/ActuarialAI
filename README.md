@@ -86,3 +86,7 @@ Enable **Run portfolio model governance assessment** after uploading a portfolio
 ## Example portfolio CSV
 
 Use [`example/portfolio_example.csv`](example/portfolio_example.csv) to try the multi-segment upload in Streamlit. It contains **synthetic** cumulative paid claims for Motor, Property and Liability (10 origin periods per segment, 165 long-form records). Upload it using **Portfolio CSV** to explore portfolio reserving, Monte Carlo, sensitivity, historical backtesting and governance. No real claims or personal data are included.
+
+## Phase 14 — PDF portfolio management report
+
+Upload a portfolio CSV (for example [`example/portfolio_example.csv`](example/portfolio_example.csv)), then enable **Generate portfolio management PDF report**. Download a PDF with executive summary, segment reserves, illustrative Monte Carlo VaR/Expected Shortfall, historical model comparisons, diagnostic governance status and limitations. The PDF uses ReportLab (installed with the project). PDF content tests use pypdf from the dev extra. This report is illustrative and does not constitute actuarial approval or calibrated capital analysis.
