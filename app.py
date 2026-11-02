@@ -26,6 +26,7 @@ from actuarial_ai.backtest import backtest_metrics, rolling_backtest
 from actuarial_ai.data_io import load_triangle, triangle_csv
 from actuarial_ai.explainability import factor_feature_importance
 from actuarial_ai.governance import monitoring_report
+from actuarial_ai.mack import mack_chain_ladder
 from actuarial_ai.ml import holdout_last_diagonal, ml_reserving
 from actuarial_ai.portfolio import portfolio_report, portfolio_scenarios
 from actuarial_ai.portfolio_backtest import portfolio_backtest
@@ -177,6 +178,30 @@ st.download_button("Download quality diagnostics (CSV)", quality_csv(quality),
                    file_name="quality_diagnostics.csv", mime="text/csv")
 result = chain_ladder(triangle)
 st.metric("Estimated outstanding reserve", f"{result['total_reserve']:,.0f} synthetic units")
+st.subheader("Mack Chain-Ladder prediction uncertainty")
+mack_confidence = st.select_slider(
+    "Illustrative normal interval confidence",
+    options=[0.80, 0.90, 0.95, 0.99],
+    value=0.95,
+)
+try:
+    mack = mack_chain_ladder(triangle, confidence=mack_confidence)
+    st.metric("Mack aggregate prediction standard error", f"{mack['total_se']:,.0f}")
+    st.write(
+        f"Approximate {mack_confidence:.0%} reserve interval: "
+        f"{mack['total_lower']:,.0f} – {mack['total_upper']:,.0f}"
+    )
+    st.dataframe(mack["summary"], use_container_width=True)
+    with st.expander("Mack variance estimates and assumptions"):
+        st.dataframe(mack["sigma2"].to_frame(), use_container_width=True)
+        st.caption(mack["assumptions"])
+    st.caption(
+        "Mack MSEP includes process and parameter risk. Normal intervals are "
+        "illustrative, not calibrated predictive coverage; zero is a floor."
+    )
+except ValueError as exc:
+    st.warning(f"Mack uncertainty unavailable: {exc}")
+
 st.subheader("Observed cumulative claims triangle")
 st.dataframe(triangle, use_container_width=True)
 st.subheader("Development factors")
