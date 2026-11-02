@@ -14,9 +14,9 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from .mack import mack_chain_ladder
-from .portfolio_mack import aggregate_mack
 from .portfolio import portfolio_report
 from .portfolio_governance import governance_assessment
+from .portfolio_mack import aggregate_mack
 from .portfolio_risk import simulate_portfolio_risk
 
 
@@ -244,7 +244,7 @@ def configurable_portfolio_pdf(
             "Monte Carlo volatility and correlation are assumed, not calibrated. "
             "VaR/Expected Shortfall are not regulatory capital. Diagnostic status "
             "does not imply approval. Mack normal intervals are not calibrated "
-             "and Mack cross-segment correlation is assumed, not calibrated. "
+            "and Mack cross-segment correlation is assumed, not calibrated. "
             "Independent actuarial review is required.",
             styles["Normal"],
         ),
