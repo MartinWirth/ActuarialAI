@@ -27,6 +27,7 @@ from actuarial_ai.data_io import load_triangle, triangle_csv
 from actuarial_ai.explainability import factor_feature_importance
 from actuarial_ai.governance import monitoring_report
 from actuarial_ai.mack import mack_chain_ladder
+from actuarial_ai.mack_sensitivity import mack_correlation_sensitivity
 from actuarial_ai.ml import holdout_last_diagonal, ml_reserving
 from actuarial_ai.portfolio import portfolio_report, portfolio_scenarios
 from actuarial_ai.portfolio_backtest import portfolio_backtest
@@ -422,6 +423,23 @@ if portfolio_upload is not None:
                 st.dataframe(aggregated["segments"], use_container_width=True)
             except ValueError as exc:
                 st.warning(f"Portfolio Mack unavailable: {exc}")
+        if st.checkbox("Run Mack correlation sensitivity", value=False):
+            try:
+                sensitivity = mack_correlation_sensitivity(segments)
+                st.dataframe(sensitivity, use_container_width=True)
+                st.line_chart(
+                    sensitivity.set_index("correlation")[
+                        ["total_se", "diversification_benefit"]
+                    ],
+                )
+                st.download_button(
+                    "Download Mack correlation sensitivity (CSV)",
+                    sensitivity.to_csv(index=False).encode("utf-8"),
+                    file_name="mack_correlation_sensitivity.csv",
+                    mime="text/csv",
+                )
+            except ValueError as exc:
+                st.warning(f"Mack sensitivity unavailable: {exc}")
         if st.checkbox("Generate configurable portfolio PDF report", value=False):
             with st.expander("Report configuration", expanded=True):
                 show_segments = st.checkbox("Include segment reserves", value=True)
@@ -429,6 +447,9 @@ if portfolio_upload is not None:
                 show_risk = st.checkbox("Include Monte Carlo risk", value=True)
                 show_governance = st.checkbox("Include governance", value=True)
                 show_mack = st.checkbox("Include Mack uncertainty by segment", value=True)
+                show_mack_sensitivity = st.checkbox(
+                    "Include Mack correlation sensitivity", value=True,
+                )
                 report_confidence = st.selectbox(
                     "Report risk confidence", [0.90, 0.95, 0.99], index=1,
                 )
@@ -443,6 +464,7 @@ if portfolio_upload is not None:
                     include_risk=show_risk,
                     include_governance=show_governance,
                     include_mack=show_mack,
+                    include_mack_sensitivity=show_mack and show_mack_sensitivity,
                     mack_correlation=float(mack_correlation),
                     confidence=float(report_confidence),
                     simulations=int(report_simulations),
