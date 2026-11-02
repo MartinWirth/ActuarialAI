@@ -7,7 +7,10 @@ from actuarial_ai.portfolio_mack import aggregate_mack
 
 def sample():
     a = synthetic_triangle(8, seed=1)
-    return {"Motor": a, "Property": a * 1.2}
+    return {
+        "Motor": a,
+        "Property": synthetic_triangle(9, seed=2),
+    }
 
 
 def test_sensitivity_matches_aggregation_and_is_monotonic():
