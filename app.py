@@ -18,6 +18,7 @@ from actuarial_ai.portfolio_io import load_portfolio_csv
 from actuarial_ai.portfolio_risk import simulate_portfolio_risk
 from actuarial_ai.quality import quality_csv, quality_report
 from actuarial_ai.report_builder import ReportOptions, configurable_portfolio_pdf
+from actuarial_ai.report_history import get_report, list_reports, save_report
 from actuarial_ai.reporting import analysis_report, report_json
 from actuarial_ai.risk_sensitivity import portfolio_risk_sensitivity
 from actuarial_ai.scenarios import scenario_comparison, sensitivity_grid
@@ -287,6 +288,31 @@ if portfolio_upload is not None:
                     file_name=f"portfolio_report_{version[:12]}.pdf",
                     mime="application/pdf",
                 )
+                if st.button("Save report snapshot to local history"):
+                    try:
+                        audit = None
+                        if settings.include_governance:
+                            try:
+                                audit = governance_assessment(segments)
+                            except ValueError:
+                                pass
+                        record_id = save_report(
+                            "data/actuarialai_reports.sqlite3",
+                            version=version, source=portfolio_upload.name,
+                            portfolio_csv=portfolio_upload.getvalue(), pdf=pdf,
+                            options=settings,
+                            summary={
+                                "segments": len(segments),
+                                "baseline_reserve": float(
+                                    portfolio["totals"]["baseline_reserve"]
+                                ),
+                                "latest_paid": float(portfolio["totals"]["latest_paid"]),
+                            },
+                            governance=audit,
+                        )
+                        st.success(f"Saved report #{record_id}")
+                    except (OSError, ValueError) as exc:
+                        st.error(f"Could not save report: {exc}")
             except ValueError as exc:
                 st.warning(f"PDF report unavailable: {exc}")
         portfolio_cases = portfolio_scenarios(segments, inflation_stress, factor_stress)
@@ -296,6 +322,69 @@ if portfolio_upload is not None:
                            file_name="portfolio_scenarios.csv", mime="text/csv")
     except (TypeError, ValueError) as exc:
         st.error(f"Invalid portfolio data: {exc}")
+
+st.subheader("Saved portfolio report history (local SQLite)")
+st.caption(
+    "Reports are saved only when requested. The database is local to this "
+    "Streamlit server; it has no authentication or encryption."
+)
+try:
+    saved_reports = list_reports("data/actuarialai_reports.sqlite3")
+    if saved_reports:
+        st.dataframe(
+            [
+                {
+                    "id": item["id"],
+                    "created_utc": item["created_utc"],
+                    "source": item["source"],
+                    "version": item["version"][:12],
+                    "baseline_reserve": item["summary"].get("baseline_reserve"),
+                    "governance_status": (
+                        item["governance"].get("status")
+                        if item["governance"] else "NOT ASSESSED"
+                    ),
+                }
+                for item in saved_reports
+            ],
+            use_container_width=True,
+        )
+        selected_id = st.selectbox(
+            "Select saved report", [item["id"] for item in saved_reports],
+            format_func=lambda value: f"Report #{value}",
+        )
+        selected = get_report("data/actuarialai_reports.sqlite3", selected_id)
+        if selected is not None:
+            st.json({
+                "created_utc": selected["created_utc"],
+                "version": selected["version"],
+                "options": selected["options"],
+                "summary": selected["summary"],
+                "governance": selected["governance"],
+            })
+            st.download_button(
+                "Download saved PDF", selected["pdf"],
+                file_name=f"portfolio_report_{selected['version'][:12]}.pdf",
+                mime="application/pdf",
+            )
+            st.download_button(
+                "Download saved source CSV", selected["portfolio_csv"],
+                file_name=f"portfolio_source_{selected_id}.csv",
+                mime="text/csv",
+            )
+        if len(saved_reports) > 1:
+            first, second = st.columns(2)
+            ids = [item["id"] for item in saved_reports]
+            left_id = first.selectbox("Compare report A", ids, index=1)
+            right_id = second.selectbox("Compare report B", ids, index=0)
+            left = next(item for item in saved_reports if item["id"] == left_id)
+            right = next(item for item in saved_reports if item["id"] == right_id)
+            a = left["summary"].get("baseline_reserve", 0)
+            b = right["summary"].get("baseline_reserve", 0)
+            st.metric("Baseline reserve change (B - A)", f"{b - a:,.2f}")
+    else:
+        st.info("No saved reports yet.")
+except (OSError, ValueError) as exc:
+    st.warning(f"Report history unavailable: {exc}")
 
 st.subheader("Model validation and governance")
 st.caption("Rolling one-step cumulative-paid holdouts; metrics do not validate ultimate reserves.")
