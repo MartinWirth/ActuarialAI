@@ -25,7 +25,7 @@ def portfolio_backtest(segments: dict[str, pd.DataFrame]) -> dict:
             rows.append({
                 "segment": name,
                 "valuation": int(valuation),
-                "observations": int(len(group)),
+                "observations": len(group),
                 "actual": float(group["actual"].sum()),
                 "chain_ladder": float(group["chain_ladder"].sum()),
                 "random_forest": float(group["random_forest"].sum()),
