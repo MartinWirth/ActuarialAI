@@ -100,3 +100,19 @@ def test_mack_correlation_changes_report_identity_and_pdf():
     text = "\n".join(p.extract_text() for p in PdfReader(BytesIO(pdf)).pages)
     assert "0.75" in text
     assert "aggregated Mack S.E." in text
+
+
+def test_optional_mack_sensitivity_pdf_and_version():
+    base = ReportOptions(
+        include_mack=True, include_risk=False, include_governance=False,
+    )
+    enabled = ReportOptions(
+        include_mack=True, include_mack_sensitivity=True,
+        include_risk=False, include_governance=False,
+    )
+    assert report_identity(sample(), base) != report_identity(sample(), enabled)
+    pdf, _ = configurable_portfolio_pdf(sample(), options=enabled)
+    text = "\n".join(page.extract_text() for page in PdfReader(BytesIO(pdf)).pages)
+    assert "Mack correlation sensitivity" in text
+    assert "Diversification" in text
+    assert "0.75" in text
