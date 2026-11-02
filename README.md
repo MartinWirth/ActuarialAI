@@ -74,3 +74,7 @@ Enable **Run model validation** in Streamlit to compare Chain-Ladder and Random 
 ## Phase 11 — portfolio risk sensitivity
 
 With a portfolio CSV loaded, enable **Run portfolio risk sensitivity grid** to compare Monte Carlo portfolio reserve VaR and Expected Shortfall over volatility assumptions (10%, 20%, 30%) and cross-segment latent correlation assumptions (0%, 25%, 75%). All grid cells use the same random seed and simulation count for a consistent illustrative comparison. The grid and a VaR pivot table are displayed and the full results can be downloaded as CSV. The results are assumption-driven, not empirically calibrated; they must not be interpreted as regulatory capital estimates.
+
+## Phase 12 — historical portfolio backtesting
+
+With a portfolio CSV uploaded, enable **Run historical portfolio backtest** to compare aggregate one-step cumulative-paid predictions from Chain-Ladder and Random Forest on common historical valuation periods. Review bias, MAE, RMSE and underprediction rates; inspect segment details and download CSV results. These metrics do **not** calibrate the assumption-driven reserve-risk simulation. See [historical portfolio backtesting](docs/portfolio-backtesting.md).
