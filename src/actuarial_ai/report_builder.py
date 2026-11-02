@@ -4,9 +4,9 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from io import BytesIO
+from xml.sax.saxutils import escape
 
 import pandas as pd
-from xml.sax.saxutils import escape
 
 from reportlab.graphics.charts.barcharts import VerticalBarChart
 from reportlab.graphics.shapes import Drawing, String
