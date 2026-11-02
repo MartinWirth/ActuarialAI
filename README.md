@@ -90,3 +90,7 @@ Use [`example/portfolio_example.csv`](example/portfolio_example.csv) to try the 
 ## Phase 14 — PDF portfolio management report
 
 Upload a portfolio CSV (for example [`example/portfolio_example.csv`](example/portfolio_example.csv)), then enable **Generate portfolio management PDF report**. Download a PDF with executive summary, segment reserves, illustrative Monte Carlo VaR/Expected Shortfall, historical model comparisons, diagnostic governance status and limitations. The PDF uses ReportLab (installed with the project). PDF content tests use pypdf from the dev extra. This report is illustrative and does not constitute actuarial approval or calibrated capital analysis.
+
+## Phase 15 — configurable, versioned executive PDF reporting
+
+After uploading a portfolio CSV, enable **Generate configurable portfolio PDF report**. Choose whether to include segment tables, an embedded reserve bar chart, Monte Carlo risk metrics and model governance. Set the simulation count and confidence level. The executive dashboard always includes segment count, latest paid and baseline reserve. The downloaded PDF embeds a SHA-256 report version derived from the complete input triangles and configuration, and the filename includes the version prefix. Repeating the same inputs/settings produces the same version fingerprint, though PDF bytes may differ because the generation timestamp changes. Versions are not stored server-side; there is no report registry or approval workflow. The output remains illustrative and requires independent actuarial review.
