@@ -4,6 +4,8 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from io import BytesIO
+
+import pandas as pd
 from xml.sax.saxutils import escape
 
 from reportlab.graphics.charts.barcharts import VerticalBarChart
@@ -38,7 +40,7 @@ def report_identity(segments: dict, options: ReportOptions) -> str:
             name: {
                 "index": [str(x) for x in triangle.index],
                 "columns": [str(x) for x in triangle.columns],
-                "values": [[None if v != v else float(v) for v in row]
+                "values": [[None if pd.isna(v) else float(v) for v in row]
                            for row in triangle.to_numpy(dtype=float)],
             }
             for name, triangle in sorted(segments.items())
