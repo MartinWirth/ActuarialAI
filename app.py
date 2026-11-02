@@ -16,7 +16,7 @@ from actuarial_ai.reporting import analysis_report, report_json
 from actuarial_ai.scenarios import scenario_comparison, sensitivity_grid
 from actuarial_ai.shap_explain import shap_factor_explanations
 from actuarial_ai.uncertainty import bootstrap_reserves
-from actuarial_ai.validation import validation_report, validate_models
+from actuarial_ai.validation import validate_models, validation_report
 
 st.set_page_config(page_title="ActuarialAI | Reserving", layout="wide")
 st.title("ActuarialAI — Chain-Ladder Reserving")
