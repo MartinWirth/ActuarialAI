@@ -62,3 +62,7 @@ Interactive best/base/worst reserve stress tests and a 3×3 inflation/developmen
 ## Phase 8 — multi-segment portfolio
 
 Upload long-form portfolio CSVs to aggregate independently validated segment reserves, compare baseline and stressed totals, review segment reserve shares and reserve-to-paid indicators, and export results. See [portfolio data schema and limitations](docs/portfolio-analysis.md).
+
+## Phase 9 — portfolio Monte Carlo risk
+
+With a validated multi-segment CSV uploaded, enable **Run portfolio Monte Carlo** in Streamlit to explore assumed reserve volatility and latent cross-segment correlation. Review simulated reserve VaR and Expected Shortfall, a distribution chart, and segment-level outcomes. Download simulated reserves as CSV. This is an educational assumption-driven model, not a calibrated actuarial capital model. See [methodology and limitations](docs/portfolio-risk.md).
