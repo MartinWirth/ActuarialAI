@@ -77,3 +77,24 @@ Nicht durch diese Referenzprüfung abgedeckt sind insbesondere:
 Die Mack-MSEP-Schätzung und die nachgelagerte **Normalapproximation für Intervalle** sind getrennt zu beurteilen.
 
 Siehe auch [Schadendreieck](claims_triangle.md), [Chain Ladder](chain-ladder.md) und [Mack Chain Ladder](mack_chain-ladder.md).
+
+
+## Phase 22: Mack im konfigurierbaren PDF-Bericht
+
+Im Streamlit-Bereich **Generate configurable portfolio PDF report** kann
+**Include Mack uncertainty by segment** aktiviert werden. Die Option
+`ReportOptions(include_mack=True)` ergänzt den Bericht um:
+
+- Chain-Ladder-Reserve und Mack-Standardfehler je Portfoliosegment.
+- Untere und obere Normalapproximation für das konfigurierte Konfidenzniveau.
+- Hinweise zu Varianzannahmen, Tail-Ausschluss und Grenzen.
+- Eine explizite Fehlermeldung je Segment, falls Mack mangels Daten nicht schätzbar ist.
+
+**Wichtig:** Es wird kein aggregierter Portfolio-Mack-Standardfehler ausgegeben.
+Die Abhängigkeit zwischen Segmenten ist nicht geschätzt; eine naive Addition
+der Segmentstandardfehler wäre fachlich nicht gerechtfertigt. Die bereits
+vorhandenen Monte-Carlo-Risikokennzahlen sind ein separates, annahmengetriebenes
+Modell und dürfen nicht als Mack-Validierung interpretiert werden.
+
+Die neue Option ist Teil des SHA-256-Berichtsfingerprints. Alte Berichte bleiben
+unverändert; neue PDFs enthalten die Mack-Sektion nur bei aktivierter Option.
