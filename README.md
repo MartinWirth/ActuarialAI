@@ -78,3 +78,7 @@ With a portfolio CSV loaded, enable **Run portfolio risk sensitivity grid** to c
 ## Phase 12 — historical portfolio backtesting
 
 With a portfolio CSV uploaded, enable **Run historical portfolio backtest** to compare aggregate one-step cumulative-paid predictions from Chain-Ladder and Random Forest on common historical valuation periods. Review bias, MAE, RMSE and underprediction rates; inspect segment details and download CSV results. These metrics do **not** calibrate the assumption-driven reserve-risk simulation. See [historical portfolio backtesting](docs/portfolio-backtesting.md).
+
+## Phase 13 — portfolio model governance
+
+Enable **Run portfolio model governance assessment** after uploading a portfolio CSV. Configure minimum historical valuation periods, maximum Random Forest / Chain-Ladder MAE ratio and maximum underprediction rate. The dashboard shows diagnostic check outcomes and exports a JSON audit report with an input SHA-256 fingerprint. A diagnostic pass is **not** model approval or actuarial sign-off. See [governance criteria and limitations](docs/portfolio-governance.md).
