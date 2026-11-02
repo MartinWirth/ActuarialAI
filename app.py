@@ -29,13 +29,13 @@ from actuarial_ai.governance import monitoring_report
 from actuarial_ai.mack import mack_chain_ladder
 from actuarial_ai.ml import holdout_last_diagonal, ml_reserving
 from actuarial_ai.portfolio import portfolio_report, portfolio_scenarios
-from actuarial_ai.portfolio_mack import aggregate_mack
 from actuarial_ai.portfolio_backtest import portfolio_backtest
 from actuarial_ai.portfolio_governance import (
     governance_assessment,
     governance_audit_report,
 )
 from actuarial_ai.portfolio_io import load_portfolio_csv
+from actuarial_ai.portfolio_mack import aggregate_mack
 from actuarial_ai.portfolio_risk import simulate_portfolio_risk
 from actuarial_ai.quality import quality_csv, quality_report
 from actuarial_ai.report_builder import ReportOptions, configurable_portfolio_pdf
