@@ -17,12 +17,12 @@ def mack_chain_ladder(triangle: pd.DataFrame, confidence: float = 0.95) -> dict:
     """
     if not 0.5 < confidence < 1:
         raise ValueError("confidence must be strictly between 0.5 and 1")
-    t = validate_triangle(triangle)
+    t = validate_triangle(triangle, allow_decrease=True)
     n = len(t)
     if n < 4:
         raise ValueError("Mack needs at least four origin periods for variance estimation")
     arr = t.to_numpy(dtype=float)
-    deterministic = chain_ladder(t)
+    deterministic = chain_ladder(t, allow_decrease=True)
     factors = deterministic["factors"].to_numpy(dtype=float)
     completed = deterministic["completed"].to_numpy(dtype=float)
     sigma2 = np.full(n - 1, np.nan)
