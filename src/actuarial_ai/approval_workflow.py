@@ -131,3 +131,29 @@ def audit_export(db_path, report_id: int) -> str:
         {"report_id": report_id, "chain_valid": valid, "events": events},
         indent=2, ensure_ascii=False,
     )
+
+
+def authenticated_transition(db_path, report_id: int, token: str,
+                             to_status: str, reason: str) -> dict:
+    """Enforce RBAC and separation of duties before recording a decision.
+
+    Note: legacy transition_report remains available for old local scripts;
+    production deployments must restrict direct database/API access.
+    """
+    from .auth import require_permission
+
+    permission = (
+        "submit_review" if to_status == "IN_REVIEW" else "approve_reports"
+    )
+    user = require_permission(db_path, token, permission)
+    if to_status in {"APPROVED", "REJECTED"}:
+        events = audit_events(db_path, report_id)
+        submitters = {
+            event["actor"] for event in events
+            if event["to_status"] == "IN_REVIEW"
+        }
+        if user["username"] in submitters:
+            raise PermissionError("Self-approval or self-rejection is prohibited")
+    return transition_report(
+        db_path, report_id, user["username"], to_status, reason,
+    )
