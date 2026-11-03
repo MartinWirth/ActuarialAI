@@ -10,8 +10,8 @@ from actuarial_ai.risk_recalculation import calculate_monitoring_snapshot
 
 def portfolio_csv(tmp_path):
     rows = []
-    for name, seed in [("Motor", 1), ("Property", 2)]:
-        triangle = synthetic_triangle(8, seed=seed)
+    for name, size, seed in [("Motor", 8, 1), ("Property", 9, 2)]:
+        triangle = synthetic_triangle(size, seed=seed)
         for origin, row in triangle.iterrows():
             for development, value in row.items():
                 if pd.notna(value):
