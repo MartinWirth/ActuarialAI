@@ -38,7 +38,7 @@ def monitoring_trends(
     checks = []
     for record in records:
         if not isinstance(record, dict):
-            raise ValueError("Monitoring record must be an object")
+            raise TypeError("Monitoring record must be an object")
         try:
             timestamp = datetime.fromisoformat(record["as_of_utc"].replace("Z", "+00:00"))
             status = record["overall_status"]
@@ -55,7 +55,7 @@ def monitoring_trends(
         if not np.isfinite(diversification):
             raise ValueError("Invalid diversification metric")
         if not isinstance(observed_checks, list):
-            raise ValueError("Monitoring checks must be a list")
+            raise TypeError("Monitoring checks must be a list")
         rows.append({
             "as_of_utc": pd.Timestamp(timestamp).tz_convert("UTC"),
             "status": status,
@@ -65,14 +65,14 @@ def monitoring_trends(
         seen = set()
         for item in observed_checks:
             if not isinstance(item, dict):
-                raise ValueError("Monitoring check must be an object")
+                raise TypeError("Monitoring check must be an object")
             try:
                 scope, name, check_status = item["scope"], item["name"], item["status"]
                 value = float(item["value"])
             except (KeyError, TypeError, ValueError) as exc:
                 raise ValueError("Invalid monitoring check") from exc
             if not isinstance(scope, str) or not isinstance(name, str):
-                raise ValueError("Invalid monitoring check label")
+                raise TypeError("Invalid monitoring check label")
             if check_status not in _STATUSES or not np.isfinite(value):
                 raise ValueError("Invalid monitoring check status or value")
             key = (scope, name)
