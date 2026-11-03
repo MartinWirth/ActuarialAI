@@ -46,8 +46,8 @@ from actuarial_ai.quality import quality_csv, quality_report
 from actuarial_ai.report_builder import ReportOptions, configurable_portfolio_pdf
 from actuarial_ai.report_history import get_report, list_reports, save_report
 from actuarial_ai.reporting import analysis_report, report_json
-from actuarial_ai.risk_limits import assess_risk_limits, risk_snapshot
 from actuarial_ai.risk_dashboard import portfolio_risk_dashboard
+from actuarial_ai.risk_limits import assess_risk_limits, risk_snapshot
 from actuarial_ai.risk_sensitivity import portfolio_risk_sensitivity
 from actuarial_ai.scenarios import scenario_comparison, sensitivity_grid
 from actuarial_ai.shap_explain import shap_factor_explanations
