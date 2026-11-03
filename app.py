@@ -52,6 +52,7 @@ from actuarial_ai.report_builder import ReportOptions, configurable_portfolio_pd
 from actuarial_ai.report_history import get_report, list_reports, save_report
 from actuarial_ai.reporting import analysis_report, report_json
 from actuarial_ai.risk_dashboard import portfolio_risk_dashboard
+from actuarial_ai.risk_forecast_validation import validate_risk_forecasts
 from actuarial_ai.risk_forecasting import forecast_mack_risk
 from actuarial_ai.risk_limits import assess_risk_limits, risk_snapshot
 from actuarial_ai.risk_management_reporting import (
@@ -774,6 +775,41 @@ if portfolio_upload is not None:
                         st.caption(projection["assumptions"])
                     except ValueError as exc:
                         st.info(f"Risk forecast unavailable: {exc}")
+                    st.subheader("Forecast model validation (Phase 36)")
+                    validation_window = st.slider(
+                        "Validation moving-average and drift window",
+                        2, 12, 3,
+                    )
+                    drift_threshold = st.number_input(
+                        "Drift threshold (baseline standard deviations)",
+                        min_value=0.1, max_value=20.0, value=2.0,
+                    )
+                    try:
+                        validation = validate_risk_forecasts(
+                            management["risk_trend"],
+                            window=validation_window,
+                            drift_threshold=drift_threshold,
+                        )
+                        st.write(
+                            f"Model version: {validation['model_version']} | "
+                            f"Best by walk-forward MAE: "
+                            f"{validation['best_model_by_mae']}"
+                        )
+                        if validation["drift_detected"]:
+                            st.warning("Possible Mack SE distribution shift detected")
+                        else:
+                            st.info("No shift detected by the selected heuristic")
+                        st.dataframe(
+                            pd.DataFrame(validation["metrics"]),
+                            width="stretch",
+                        )
+                        st.dataframe(
+                            pd.DataFrame(validation["backtest"]),
+                            width="stretch",
+                        )
+                        st.caption(validation["assumptions"])
+                    except ValueError as exc:
+                        st.info(f"Forecast validation unavailable: {exc}")
                     st.download_button(
                         "Download alert report (CSV)",
                         data=report_csv(management),
