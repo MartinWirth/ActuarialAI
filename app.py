@@ -546,7 +546,7 @@ if portfolio_upload is not None:
                         history_records = parse_monitoring_history(
                             history_upload.getvalue(),
                         )
-                    except ValueError as exc:
+                    except (ValueError, TypeError) as exc:
                         st.warning(f"Monitoring history unavailable: {exc}")
                 snapshot = risk_snapshot(assessment, monitoring_dashboard)
                 all_records = [*history_records, snapshot]
