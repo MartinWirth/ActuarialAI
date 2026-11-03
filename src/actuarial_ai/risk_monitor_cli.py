@@ -1,9 +1,11 @@
 """Local scheduled ingestion of risk snapshots; no external notifications."""
 import argparse
 import json
+import smtplib
 import time
 from pathlib import Path
 
+from .alert_notifications import send_critical_alerts
 from .risk_monitor import save_monitoring_run
 from .risk_recalculation import calculate_monitoring_snapshot
 
@@ -20,6 +22,10 @@ def main() -> None:
     parser.add_argument(
         "--interval-seconds", type=int, default=0,
         help="Poll snapshot file at this interval (0 = run once)",
+    )
+    parser.add_argument(
+        "--email-critical", action="store_true",
+        help="Send critical alerts using configured SMTP environment variables",
     )
     args = parser.parse_args()
     if args.config is not None and args.portfolio is None:
@@ -49,6 +55,15 @@ def main() -> None:
                     f"Run {result['run_id']}: {len(result['alerts'])} new alerts",
                     flush=True,
                 )
+                if args.email_critical:
+                    try:
+                        count = send_critical_alerts(
+                            result["alerts"], run_id=result["run_id"],
+                        )
+                        if count:
+                            print(f"Email sent for {count} critical alerts", flush=True)
+                    except (OSError, ValueError, smtplib.SMTPException) as exc:
+                        print(f"Email delivery failed: {exc}", flush=True)
                 for alert in result["alerts"]:
                     print(
                         f"ALERT {alert['scope']}/{alert['name']}: "
