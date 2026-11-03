@@ -131,3 +131,20 @@ def test_pairwise_mack_matrix_pdf_and_identity():
     text = "\n".join(page.extract_text() for page in PdfReader(BytesIO(pdf)).pages)
     assert "Pairwise correlation matrix" in text
     assert "aggregated Mack S.E." in text
+
+
+def test_pairwise_mack_sensitivity_pdf_and_version():
+    base = ReportOptions(
+        include_mack=True, include_risk=False, include_governance=False,
+        mack_matrix=((1.0, 0.3), (0.3, 1.0)),
+    )
+    enabled = ReportOptions(
+        include_mack=True, include_risk=False, include_governance=False,
+        mack_matrix=((1.0, 0.3), (0.3, 1.0)),
+        include_mack_matrix_sensitivity=True,
+    )
+    assert report_identity(sample(), base) != report_identity(sample(), enabled)
+    pdf, _ = configurable_portfolio_pdf(sample(), options=enabled)
+    text = "\n".join(page.extract_text() for page in PdfReader(BytesIO(pdf)).pages)
+    assert "Pairwise Mack matrix sensitivity" in text
+    assert "Delta S.E." in text
