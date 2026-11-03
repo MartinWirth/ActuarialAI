@@ -22,6 +22,7 @@ from .portfolio import portfolio_report
 from .portfolio_governance import governance_assessment
 from .portfolio_mack import aggregate_mack
 from .portfolio_risk import simulate_portfolio_risk
+from .risk_dashboard import portfolio_risk_dashboard
 
 
 @dataclass(frozen=True)
@@ -31,6 +32,7 @@ class ReportOptions:
     include_governance: bool = True
     include_charts: bool = True
     include_mack: bool = False
+    include_risk_dashboard: bool = False
     include_mack_attribution: bool = False
     include_mack_sensitivity: bool = False
     mack_correlation: float = 0.0
@@ -207,6 +209,76 @@ def configurable_portfolio_pdf(
                 f"{aggregate['diversification_benefit']:,.2f}.",
                 styles["Normal"],
             ))
+        if options.include_risk_dashboard:
+            story.append(Spacer(1, 8))
+            story.append(Paragraph(
+                "Consolidated Mack risk dashboard", styles["Heading3"],
+            ))
+            try:
+                names = sorted(segments)
+                if options.mack_matrix is None:
+                    matrix = pd.DataFrame(
+                        [[1.0 if a == b else options.mack_correlation
+                          for b in names] for a in names],
+                        index=names, columns=names,
+                    )
+                else:
+                    matrix = pd.DataFrame(
+                        options.mack_matrix, index=names, columns=names,
+                    )
+                dashboard = portfolio_risk_dashboard(
+                    segments, matrix, confidence=options.confidence,
+                )
+            except ValueError as exc:
+                story.append(Paragraph(
+                    f"Risk dashboard unavailable: {escape(str(exc))}",
+                    styles["Normal"],
+                ))
+            else:
+                metrics = dashboard["metrics"]
+                story.append(Paragraph(
+                    f"Portfolio Mack S.E.: {metrics['total_se']:,.0f}; "
+                    f"independent S.E.: {metrics['independent_se']:,.0f}; "
+                    f"diversification: {metrics['diversification_benefit']:,.0f} "
+                    f"({metrics['diversification_pct']:.1%}).",
+                    styles["Normal"],
+                ))
+                rows = [["Rank", "Segment", "Euler S.E.", "S.E. share"]]
+                for _, item in dashboard["ranking"].iterrows():
+                    rows.append([
+                        str(int(item["rank"])),
+                        Paragraph(escape(str(item["segment"])), styles["Normal"]),
+                        f"{item['euler_se_contribution']:,.0f}",
+                        f"{item['se_share']:.1%}",
+                    ])
+                table = Table(rows, colWidths=[55, 185, 130, 120], repeatRows=1)
+                table.setStyle(TableStyle([
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E6EDF5")),
+                    ("GRID", (0, 0), (-1, -1), 0.3, colors.lightgrey),
+                ]))
+                story.append(table)
+                story.append(Paragraph(
+                    "Alternative common-correlation scenarios", styles["Heading3"],
+                ))
+                rows = [["Correlation", "Portfolio S.E.", "Diversification"]]
+                for _, item in dashboard["scenarios"].iterrows():
+                    rows.append([
+                        f"{item['correlation']:.2f}",
+                        f"{item['total_se']:,.0f}",
+                        f"{item['diversification_benefit']:,.0f}",
+                    ])
+                table = Table(rows, colWidths=[130, 180, 180], repeatRows=1)
+                table.setStyle(TableStyle([
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E6EDF5")),
+                    ("GRID", (0, 0), (-1, -1), 0.3, colors.lightgrey),
+                ]))
+                story.append(table)
+                story.append(Paragraph(
+                    "Risk contributions and correlations are assumption-driven. "
+                    "Scenarios use uniform pairwise correlations rather than "
+                    "changes to the selected matrix. Not calibrated capital.",
+                    styles["Normal"],
+                ))
         if options.include_mack_attribution:
             story.append(Spacer(1, 8))
             story.append(Paragraph(
