@@ -29,6 +29,7 @@ from actuarial_ai.explainability import factor_feature_importance
 from actuarial_ai.governance import monitoring_report
 from actuarial_ai.mack import mack_chain_ladder
 from actuarial_ai.mack_matrix import aggregate_mack_matrix, validate_correlation_matrix
+from actuarial_ai.mack_matrix_sensitivity import mack_matrix_sensitivity
 from actuarial_ai.mack_sensitivity import mack_correlation_sensitivity
 from actuarial_ai.ml import holdout_last_diagonal, ml_reserving
 from actuarial_ai.portfolio import portfolio_report, portfolio_scenarios
@@ -470,6 +471,54 @@ if portfolio_upload is not None:
                 )
             except ValueError as exc:
                 st.warning(f"Mack sensitivity unavailable: {exc}")
+        show_pairwise_sensitivity = st.checkbox(
+            "Run pairwise Mack matrix sensitivity", value=False,
+            disabled=not use_mack_matrix,
+        )
+        pairwise_shock = st.slider(
+            "Pairwise correlation shock step", 0.05, 0.40, 0.10, 0.05,
+            disabled=not show_pairwise_sensitivity,
+        )
+        if show_pairwise_sensitivity:
+            if custom_mack_matrix is None:
+                st.warning("Correct the correlation matrix before running sensitivity.")
+            else:
+                try:
+                    scenarios = mack_matrix_sensitivity(
+                        segments, custom_mack_matrix,
+                        shocks=(-2 * pairwise_shock, -pairwise_shock, 0.0,
+                                pairwise_shock, 2 * pairwise_shock),
+                    )
+                    st.dataframe(scenarios, use_container_width=True)
+                    valid_scenarios = scenarios[scenarios["valid_psd"]]
+                    if not valid_scenarios.empty:
+                        heatmap_data = valid_scenarios.pivot(
+                            index=["segment_a", "segment_b"],
+                            columns="shock", values="delta_se",
+                        )
+                        heatmap_data.index = [
+                            f"{a} / {b}" for a, b in heatmap_data.index
+                        ]
+                        fig = px.imshow(
+                            heatmap_data, aspect="auto",
+                            labels={"x": "Pairwise shock", "y": "Segment pair",
+                                    "color": "Change in Mack S.E."},
+                            title="Mack portfolio risk sensitivity",
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+                    st.caption(
+                        "Only one symmetric pair changes per scenario. "
+                        "Non-PSD scenarios are excluded from the heatmap and "
+                        "have no reported risk estimate."
+                    )
+                    st.download_button(
+                        "Download pairwise Mack sensitivity (CSV)",
+                        scenarios.to_csv(index=False).encode("utf-8"),
+                        file_name="mack_pairwise_sensitivity.csv",
+                        mime="text/csv",
+                    )
+                except ValueError as exc:
+                    st.warning(f"Pairwise Mack sensitivity unavailable: {exc}")
         if st.checkbox("Generate configurable portfolio PDF report", value=False):
             with st.expander("Report configuration", expanded=True):
                 show_segments = st.checkbox("Include segment reserves", value=True)
@@ -479,6 +528,10 @@ if portfolio_upload is not None:
                 show_mack = st.checkbox("Include Mack uncertainty by segment", value=True)
                 show_mack_sensitivity = st.checkbox(
                     "Include Mack correlation sensitivity", value=True,
+                )
+                show_pairwise_pdf = st.checkbox(
+                    "Include pairwise Mack matrix sensitivity", value=False,
+                    disabled=not (show_mack and use_mack_matrix),
                 )
                 report_confidence = st.selectbox(
                     "Report risk confidence", [0.90, 0.95, 0.99], index=1,
@@ -495,6 +548,10 @@ if portfolio_upload is not None:
                     include_governance=show_governance,
                     include_mack=show_mack,
                     include_mack_sensitivity=show_mack and show_mack_sensitivity,
+                    include_mack_matrix_sensitivity=(
+                        show_mack and use_mack_matrix and show_pairwise_pdf
+                    ),
+                    mack_matrix_shock=float(pairwise_shock),
                     mack_correlation=float(mack_correlation),
                     mack_matrix=(
                         tuple(tuple(float(v) for v in row)
