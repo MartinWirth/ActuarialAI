@@ -25,7 +25,7 @@ def test_green_limits_and_snapshot():
     result = assess_risk_limits(
         d, portfolio_warning=1e12, portfolio_critical=2e12,
         segment_share_warning=2.0, segment_share_critical=3.0,
-        diversification_warning=0.0, diversification_critical=-0.1,
+        diversification_warning=0.01, diversification_critical=0.0,
     )
     assert result["status"] == "green"
     snapshot = risk_snapshot(result, d, as_of="2026-11-03T00:00:00+00:00")
@@ -40,13 +40,13 @@ def test_yellow_and_red_portfolio():
     yellow = assess_risk_limits(
         d, portfolio_warning=se * 0.9, portfolio_critical=se * 1.1,
         segment_share_warning=2.0, segment_share_critical=3.0,
-        diversification_warning=0.0, diversification_critical=-0.1,
+        diversification_warning=0.01, diversification_critical=0.0,
     )
     assert yellow["status"] == "yellow"
     red = assess_risk_limits(
         d, portfolio_warning=se * 0.5, portfolio_critical=se * 0.9,
         segment_share_warning=2.0, segment_share_critical=3.0,
-        diversification_warning=0.0, diversification_critical=-0.1,
+        diversification_warning=0.01, diversification_critical=0.0,
     )
     assert red["status"] == "red"
 
@@ -56,7 +56,7 @@ def test_concentration_breach():
     result = assess_risk_limits(
         d, portfolio_warning=1e12, portfolio_critical=2e12,
         segment_share_warning=0.0, segment_share_critical=0.01,
-        diversification_warning=0.0, diversification_critical=-0.1,
+        diversification_warning=0.01, diversification_critical=0.0,
     )
     assert result["status"] == "red"
     assert (result["checks"]["scope"] == "segment").sum() == 2
