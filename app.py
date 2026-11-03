@@ -769,6 +769,15 @@ if portfolio_upload is not None:
                 show_risk = st.checkbox("Include Monte Carlo risk", value=True)
                 show_governance = st.checkbox("Include governance", value=True)
                 show_mack = st.checkbox("Include Mack uncertainty by segment", value=True)
+                show_risk_trends = st.checkbox(
+                    "Include historical Mack risk trends", value=False,
+                    disabled=not show_mack,
+                )
+                pdf_history = st.file_uploader(
+                    "Historical monitoring JSONL for PDF",
+                    type=["jsonl"], key="pdf_mack_history",
+                    disabled=not show_risk_trends,
+                )
                 show_risk_limits = st.checkbox(
                     "Include Mack risk limits", value=False,
                     disabled=not show_mack,
@@ -812,6 +821,11 @@ if portfolio_upload is not None:
                     include_mack=show_mack,
                     include_risk_dashboard=show_mack and show_risk_dashboard,
                     include_risk_limits=show_mack and show_risk_limits,
+                    include_risk_trends=show_mack and show_risk_trends,
+                    risk_history_jsonl=(
+                        pdf_history.getvalue().decode("utf-8")
+                        if pdf_history is not None and show_risk_trends else ""
+                    ),
                     risk_limit_warning=float(report_portfolio_warning),
                     risk_limit_critical=float(report_portfolio_critical),
                     include_mack_attribution=show_mack and show_mack_attribution,
