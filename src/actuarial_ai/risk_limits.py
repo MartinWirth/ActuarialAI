@@ -4,8 +4,6 @@ from datetime import datetime, timezone
 import numpy as np
 import pandas as pd
 
-from .risk_dashboard import portfolio_risk_dashboard
-
 
 def _status(value: float, warning: float, critical: float, *, high_bad: bool = True) -> str:
     if not all(np.isfinite(x) for x in (value, warning, critical)):
