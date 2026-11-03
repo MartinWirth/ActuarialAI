@@ -148,3 +148,21 @@ def test_pairwise_mack_sensitivity_pdf_and_version():
     text = "\n".join(page.extract_text() for page in PdfReader(BytesIO(pdf)).pages)
     assert "Pairwise Mack matrix sensitivity" in text
     assert "Delta S.E." in text
+
+
+def test_mack_attribution_pdf_and_report_identity():
+    base = ReportOptions(
+        include_mack=True, include_risk=False, include_governance=False,
+        mack_matrix=((1.0, 0.3), (0.3, 1.0)),
+    )
+    enabled = ReportOptions(
+        include_mack=True, include_mack_attribution=True,
+        include_risk=False, include_governance=False,
+        mack_matrix=((1.0, 0.3), (0.3, 1.0)),
+    )
+    assert report_identity(sample(), base) != report_identity(sample(), enabled)
+    pdf, _ = configurable_portfolio_pdf(sample(), options=enabled)
+    text = "\n".join(page.extract_text() for page in PdfReader(BytesIO(pdf)).pages)
+    assert "Mack portfolio risk attribution" in text
+    assert "Pairwise cross-variance contributions" in text
+    assert "Euler S.E." in text
