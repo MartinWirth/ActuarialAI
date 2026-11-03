@@ -5,6 +5,7 @@ import smtplib
 import time
 from pathlib import Path
 
+from .alert_automation import process_alert_automation
 from .alert_notifications import send_critical_alerts
 from .risk_monitor import save_monitoring_run
 from .risk_recalculation import calculate_monitoring_snapshot
@@ -27,9 +28,15 @@ def main() -> None:
         "--email-critical", action="store_true",
         help="Send critical alerts using configured SMTP environment variables",
     )
+    parser.add_argument(
+        "--escalate-after-hours", type=float, default=24,
+        help="Escalate unacknowledged critical alerts after this many hours",
+    )
     args = parser.parse_args()
     if args.config is not None and args.portfolio is None:
         parser.error("--config requires --portfolio")
+    if not 0 < args.escalate_after_hours <= 8760:
+        parser.error("--escalate-after-hours must be in (0, 8760]")
     if args.interval_seconds < 0:
         parser.error("--interval-seconds must be nonnegative")
     while True:
@@ -45,11 +52,20 @@ def main() -> None:
             else:
                 snapshot = json.loads(args.snapshot.read_text(encoding="utf-8"))
             result = save_monitoring_run(args.database, snapshot)
+            automated = process_alert_automation(
+                args.database, critical_after_hours=args.escalate_after_hours,
+            )
         except (OSError, ValueError, TypeError, KeyError) as exc:
             print(f"Monitoring failed: {exc}", flush=True)
             if args.interval_seconds == 0:
                 raise SystemExit(1) from exc
         else:
+            if automated["resolved"] or automated["escalated"]:
+                print(
+                    f"Automation: {len(automated['resolved'])} resolved, "
+                    f"{len(automated['escalated'])} escalated",
+                    flush=True,
+                )
             if result["created"]:
                 print(
                     f"Run {result['run_id']}: {len(result['alerts'])} new alerts",
