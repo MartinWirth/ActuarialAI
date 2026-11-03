@@ -46,6 +46,7 @@ from actuarial_ai.quality import quality_csv, quality_report
 from actuarial_ai.report_builder import ReportOptions, configurable_portfolio_pdf
 from actuarial_ai.report_history import get_report, list_reports, save_report
 from actuarial_ai.reporting import analysis_report, report_json
+from actuarial_ai.risk_limits import assess_risk_limits, risk_snapshot
 from actuarial_ai.risk_dashboard import portfolio_risk_dashboard
 from actuarial_ai.risk_sensitivity import portfolio_risk_sensitivity
 from actuarial_ai.scenarios import scenario_comparison, sensitivity_grid
@@ -480,6 +481,68 @@ if portfolio_upload is not None:
                 )
             except ValueError as exc:
                 st.warning(f"Portfolio risk dashboard unavailable: {exc}")
+        if st.checkbox("Monitor Mack risk limits", value=False):
+            st.caption(
+                "Illustrative user-defined thresholds; monitoring runs on demand. "
+                "Export snapshots to retain history externally."
+            )
+            limit_warning = st.number_input(
+                "Portfolio Mack S.E. warning limit", min_value=0.0,
+                value=100000.0, step=10000.0,
+            )
+            limit_critical = st.number_input(
+                "Portfolio Mack S.E. critical limit", min_value=0.0,
+                value=200000.0, step=10000.0,
+            )
+            concentration_warning = st.slider(
+                "Segment concentration warning (absolute Euler share)",
+                0.0, 2.0, 0.4, 0.05,
+            )
+            concentration_critical = st.slider(
+                "Segment concentration critical (absolute Euler share)",
+                0.0, 2.0, 0.6, 0.05,
+            )
+            diversification_warning = st.slider(
+                "Diversification ratio warning floor", 0.0, 1.0, 0.1, 0.05,
+            )
+            diversification_critical = st.slider(
+                "Diversification ratio critical floor", 0.0, 1.0, 0.0, 0.05,
+            )
+            try:
+                names = sorted(segments)
+                if use_mack_matrix:
+                    if custom_mack_matrix is None:
+                        raise ValueError("Correct the correlation matrix first")
+                    limit_matrix = custom_mack_matrix
+                else:
+                    limit_matrix = pd.DataFrame(
+                        [[1.0 if a == b else float(mack_correlation)
+                          for b in names] for a in names],
+                        index=names, columns=names,
+                    )
+                monitoring_dashboard = portfolio_risk_dashboard(
+                    segments, limit_matrix,
+                )
+                assessment = assess_risk_limits(
+                    monitoring_dashboard,
+                    portfolio_warning=float(limit_warning),
+                    portfolio_critical=float(limit_critical),
+                    segment_share_warning=float(concentration_warning),
+                    segment_share_critical=float(concentration_critical),
+                    diversification_warning=float(diversification_warning),
+                    diversification_critical=float(diversification_critical),
+                )
+                st.metric("Monitoring status", assessment["status"].upper())
+                st.dataframe(assessment["checks"], use_container_width=True)
+                st.caption(assessment["assumptions"])
+                st.download_button(
+                    "Download risk monitoring snapshot (JSON)",
+                    report_json(risk_snapshot(assessment, monitoring_dashboard)),
+                    file_name="mack_risk_monitoring_snapshot.json",
+                    mime="application/json",
+                )
+            except ValueError as exc:
+                st.warning(f"Risk monitoring unavailable: {exc}")
         if st.checkbox("Calculate aggregate Mack uncertainty", value=False):
             try:
                 if use_mack_matrix:
@@ -630,6 +693,18 @@ if portfolio_upload is not None:
                 show_risk = st.checkbox("Include Monte Carlo risk", value=True)
                 show_governance = st.checkbox("Include governance", value=True)
                 show_mack = st.checkbox("Include Mack uncertainty by segment", value=True)
+                show_risk_limits = st.checkbox(
+                    "Include Mack risk limits", value=False,
+                    disabled=not show_mack,
+                )
+                report_portfolio_warning = st.number_input(
+                    "PDF portfolio S.E. warning limit", min_value=0.0,
+                    value=100000.0, disabled=not show_risk_limits,
+                )
+                report_portfolio_critical = st.number_input(
+                    "PDF portfolio S.E. critical limit", min_value=0.0,
+                    value=200000.0, disabled=not show_risk_limits,
+                )
                 show_risk_dashboard = st.checkbox(
                     "Include consolidated Mack risk dashboard", value=False,
                     disabled=not show_mack,
@@ -660,6 +735,9 @@ if portfolio_upload is not None:
                     include_governance=show_governance,
                     include_mack=show_mack,
                     include_risk_dashboard=show_mack and show_risk_dashboard,
+                    include_risk_limits=show_mack and show_risk_limits,
+                    risk_limit_warning=float(report_portfolio_warning),
+                    risk_limit_critical=float(report_portfolio_critical),
                     include_mack_attribution=show_mack and show_mack_attribution,
                     include_mack_sensitivity=show_mack and show_mack_sensitivity,
                     include_mack_matrix_sensitivity=(
