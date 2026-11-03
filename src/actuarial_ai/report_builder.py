@@ -15,6 +15,7 @@ from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, Tabl
 
 from .mack import mack_chain_ladder
 from .mack_matrix import aggregate_mack_matrix
+from .mack_matrix_sensitivity import mack_matrix_sensitivity
 from .mack_sensitivity import mack_correlation_sensitivity
 from .portfolio import portfolio_report
 from .portfolio_governance import governance_assessment
@@ -32,6 +33,8 @@ class ReportOptions:
     include_mack_sensitivity: bool = False
     mack_correlation: float = 0.0
     mack_matrix: tuple[tuple[float, ...], ...] | None = None
+    include_mack_matrix_sensitivity: bool = False
+    mack_matrix_shock: float = 0.1
     simulations: int = 2000
     confidence: float = 0.95
     seed: int = 42
@@ -252,6 +255,61 @@ def configurable_portfolio_pdf(
             for name, values in zip(names, options.mack_matrix):
                 rows.append([name, *(f"{v:.2f}" for v in values)])
             story.append(Table(rows, repeatRows=1))
+        if options.include_mack_matrix_sensitivity:
+            story.append(Spacer(1, 8))
+            story.append(Paragraph(
+                "Pairwise Mack matrix sensitivity", styles["Heading3"],
+            ))
+            if options.mack_matrix is None:
+                story.append(Paragraph(
+                    "Pairwise sensitivity unavailable: no correlation matrix supplied.",
+                    styles["Normal"],
+                ))
+            else:
+                try:
+                    names = sorted(segments)
+                    matrix = pd.DataFrame(
+                        options.mack_matrix, index=names, columns=names,
+                    )
+                    step = options.mack_matrix_shock
+                    scenarios = mack_matrix_sensitivity(
+                        segments, matrix,
+                        shocks=(-2 * step, -step, 0.0, step, 2 * step),
+                        confidence=options.confidence,
+                    )
+                except ValueError as exc:
+                    story.append(Paragraph(
+                        f"Pairwise sensitivity unavailable: {escape(str(exc))}",
+                        styles["Normal"],
+                    ))
+                else:
+                    rows = [["Pair", "Shock", "Corr.", "PSD", "Mack S.E.", "Delta S.E."]]
+                    for _, item in scenarios.iterrows():
+                        rows.append([
+                            Paragraph(
+                                escape(f"{item['segment_a']} / {item['segment_b']}"),
+                                styles["Normal"],
+                            ),
+                            f"{item['shock']:+.2f}",
+                            f"{item['correlation']:.2f}",
+                            "Yes" if item["valid_psd"] else "No",
+                            f"{item['total_se']:,.0f}" if item["valid_psd"] else "N/A",
+                            f"{item['delta_se']:+,.0f}" if item["valid_psd"] else "N/A",
+                        ])
+                    table = Table(
+                        rows, colWidths=[130, 55, 55, 45, 100, 100],
+                        repeatRows=1,
+                    )
+                    table.setStyle(TableStyle([
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E6EDF5")),
+                        ("GRID", (0, 0), (-1, -1), 0.3, colors.lightgrey),
+                    ]))
+                    story.append(table)
+                    story.append(Paragraph(
+                        "Each scenario changes one symmetric pair; non-PSD "
+                        "scenarios are reported as unavailable, not repaired.",
+                        styles["Normal"],
+                    ))
         story.append(Paragraph(
             "Assumptions: independent origin periods within each segment; "
             "conditional variance proportional to cumulative paid; final-age "
