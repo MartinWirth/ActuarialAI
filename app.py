@@ -187,9 +187,9 @@ col1, col2, col3 = st.columns(3)
 col1.metric("Observed cells", q["observed_cells"])
 col2.metric("Flagged development pairs", q["flagged_pairs"])
 col3.metric("Unassessable pairs", q["unassessable_pairs"])
-st.dataframe(quality["flags"], use_container_width=True)
+st.dataframe(quality["flags"], width="stretch")
 with st.expander("All development-pair diagnostics"):
-    st.dataframe(quality["diagnostics"], use_container_width=True)
+    st.dataframe(quality["diagnostics"], width="stretch")
 st.download_button("Download quality diagnostics (CSV)", quality_csv(quality),
                    file_name="quality_diagnostics.csv", mime="text/csv")
 result = chain_ladder(triangle)
@@ -207,9 +207,9 @@ try:
         f"Approximate {mack_confidence:.0%} reserve interval: "
         f"{mack['total_lower']:,.0f} – {mack['total_upper']:,.0f}"
     )
-    st.dataframe(mack["summary"], use_container_width=True)
+    st.dataframe(mack["summary"], width="stretch")
     with st.expander("Mack variance estimates and assumptions"):
-        st.dataframe(mack["sigma2"].to_frame(), use_container_width=True)
+        st.dataframe(mack["sigma2"].to_frame(), width="stretch")
         st.caption(mack["assumptions"])
     st.caption(
         "Mack MSEP includes process and parameter risk. Normal intervals are "
@@ -219,15 +219,15 @@ except ValueError as exc:
     st.warning(f"Mack uncertainty unavailable: {exc}")
 
 st.subheader("Observed cumulative claims triangle")
-st.dataframe(triangle, use_container_width=True)
+st.dataframe(triangle, width="stretch")
 st.subheader("Development factors")
-st.dataframe(result["factors"].to_frame().T, use_container_width=True)
+st.dataframe(result["factors"].to_frame().T, width="stretch")
 st.subheader("Origin-period reserves")
-st.dataframe(result["summary"], use_container_width=True)
+st.dataframe(result["summary"], width="stretch")
 fig = px.bar(result["summary"].reset_index(), x="index", y="reserve", labels={"index": "Origin period", "reserve": "Reserve (synthetic units)"})
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, width="stretch")
 st.subheader("Completed claims triangle")
-st.dataframe(result["completed"], use_container_width=True)
+st.dataframe(result["completed"], width="stretch")
 
 st.subheader("Experimental ML benchmark")
 st.caption("Random forest predicts age-to-age factors; sparse ages fall back to classical factors. Not production-calibrated.")
@@ -235,12 +235,12 @@ if n >= 6:
     ml = ml_reserving(triangle)
     comparison = result["summary"][["reserve"]].rename(columns={"reserve": "Chain-Ladder"})
     comparison["Random Forest"] = ml["summary"]["reserve"]
-    st.dataframe(comparison, use_container_width=True)
+    st.dataframe(comparison, width="stretch")
     st.bar_chart(comparison)
     try:
         holdout = holdout_last_diagonal(triangle)
         st.metric("ML one-step diagonal holdout MAE", f"{holdout['mae']:,.0f} synthetic units")
-        st.dataframe(holdout["predictions"], use_container_width=True)
+        st.dataframe(holdout["predictions"], width="stretch")
     except ValueError as exc:
         st.info(str(exc))
 else:
@@ -252,13 +252,13 @@ predictions = rolling_backtest(triangle)
 if predictions.empty:
     st.info("Insufficient historical development pairs for rolling backtest.")
 else:
-    st.dataframe(backtest_metrics(predictions), use_container_width=True)
-    st.dataframe(predictions, use_container_width=True)
+    st.dataframe(backtest_metrics(predictions), width="stretch")
+    st.dataframe(predictions, width="stretch")
     st.subheader("Model governance monitoring")
     st.caption("Out-of-time MAE per valuation; alerts are illustrative and require human review.")
     monitoring = monitoring_report(predictions)
     st.metric("ML underperformance alerts", monitoring["alert_count"])
-    st.dataframe(monitoring["by_valuation"], use_container_width=True)
+    st.dataframe(monitoring["by_valuation"], width="stretch")
 
 st.subheader("Bootstrap reserve sensitivity")
 st.caption("Educational resampling of development factors; not a calibrated reserve confidence interval.")
@@ -266,12 +266,12 @@ simulation_count = st.slider("Bootstrap simulations", 100, 1000, 300, step=100)
 bootstrap = bootstrap_reserves(triangle, simulations=simulation_count, seed=int(seed))
 st.write(f"Illustrative 90% sample quantile range: {bootstrap['lower']:,.0f} to {bootstrap['upper']:,.0f} synthetic units")
 st.plotly_chart(px.histogram(x=bootstrap["samples"], nbins=35,
-    labels={"x": "Simulated total reserve (synthetic units)"}), use_container_width=True)
+    labels={"x": "Simulated total reserve (synthetic units)"}), width="stretch")
 if n >= 6:
     st.subheader("Experimental ML feature importance")
     st.caption("In-sample permutation importance; not causal and not validated out of sample.")
     importance = factor_feature_importance(triangle)
-    st.dataframe(importance, use_container_width=True)
+    st.dataframe(importance, width="stretch")
     st.bar_chart(importance.set_index("feature")["importance_mean"])
 
 if n >= 6:
@@ -280,9 +280,9 @@ if n >= 6:
     if st.checkbox("Compute SHAP explanations", value=False):
         try:
             shap_result = shap_factor_explanations(triangle)
-            st.dataframe(shap_result["importance"], use_container_width=True)
+            st.dataframe(shap_result["importance"], width="stretch")
             st.bar_chart(shap_result["importance"].set_index("feature")["mean_absolute_shap"])
-            st.dataframe(shap_result["details"], use_container_width=True)
+            st.dataframe(shap_result["details"], width="stretch")
         except (ImportError, ValueError) as exc:
             st.warning(str(exc))
 
@@ -291,7 +291,7 @@ st.caption("Illustrative deterministic shocks applied only to future incremental
 inflation_stress = st.slider("Annual future-payment inflation stress (%)", 0, 30, 5, step=1) / 100
 factor_stress = st.slider("Future development increment stress (%)", 0, 30, 10, step=1) / 100
 scenarios = scenario_comparison(triangle, inflation_stress, factor_stress)
-st.dataframe(scenarios, use_container_width=True)
+st.dataframe(scenarios, width="stretch")
 st.bar_chart(scenarios.set_index("scenario")["total_reserve"])
 st.download_button("Download scenario comparison (CSV)",
                    scenarios.to_csv(index=False).encode("utf-8"),
@@ -301,7 +301,7 @@ sensitivity = sensitivity_grid(
     (-factor_stress, 0.0, factor_stress),
 )
 st.caption("Reserve sensitivity by combined future inflation and development shocks")
-st.dataframe(sensitivity, use_container_width=True)
+st.dataframe(sensitivity, width="stretch")
 st.download_button("Download sensitivity grid (CSV)",
                    sensitivity.to_csv(index=False).encode("utf-8"),
                    file_name="reserve_sensitivity.csv", mime="text/csv")
@@ -318,7 +318,7 @@ if portfolio_upload is not None:
         pc1.metric("Portfolio baseline reserve", f"{totals['baseline_reserve']:,.0f}")
         pc2.metric("Portfolio stressed reserve", f"{totals['stressed_reserve']:,.0f}")
         pc3.metric("Portfolio reserve delta", f"{totals['reserve_delta']:,.0f}")
-        st.dataframe(portfolio["segments"], use_container_width=True)
+        st.dataframe(portfolio["segments"], width="stretch")
         st.bar_chart(portfolio["segments"].set_index("segment")[["baseline_reserve", "stressed_reserve"]])
         st.download_button("Download portfolio segment report (CSV)",
                            portfolio["segments"].to_csv(index=False).encode("utf-8"),
@@ -341,9 +341,9 @@ if portfolio_upload is not None:
             st.plotly_chart(
                 px.histogram(x=risk["portfolio_samples"], nbins=50,
                              labels={"x": "Simulated portfolio reserve"}),
-                use_container_width=True,
+                width="stretch",
             )
-            st.dataframe(risk["segment_summary"], use_container_width=True)
+            st.dataframe(risk["segment_summary"], width="stretch")
             simulation_table = risk["samples"].copy()
             simulation_table["portfolio_total"] = risk["portfolio_samples"]
             st.download_button(
@@ -356,10 +356,10 @@ if portfolio_upload is not None:
                 segments, simulations=2000, confidence=0.95, seed=int(seed),
             )
             st.caption("Assumption scenarios: volatility × latent correlation; not calibrated.")
-            st.dataframe(grid, use_container_width=True)
+            st.dataframe(grid, width="stretch")
             st.dataframe(
                 grid.pivot(index="volatility", columns="correlation", values="var"),
-                use_container_width=True,
+                width="stretch",
             )
             st.download_button(
                 "Download portfolio risk sensitivity (CSV)",
@@ -370,10 +370,10 @@ if portfolio_upload is not None:
             try:
                 history = portfolio_backtest(segments)
                 st.caption(history["limitations"])
-                st.dataframe(history["metrics"], use_container_width=True)
-                st.dataframe(history["portfolio"], use_container_width=True)
+                st.dataframe(history["metrics"], width="stretch")
+                st.dataframe(history["portfolio"], width="stretch")
                 with st.expander("Segment-level historical holdouts"):
-                    st.dataframe(history["by_segment"], use_container_width=True)
+                    st.dataframe(history["by_segment"], width="stretch")
                 st.download_button(
                     "Download historical portfolio backtest (CSV)",
                     history["portfolio"].to_csv(index=False).encode("utf-8"),
@@ -397,8 +397,8 @@ if portfolio_upload is not None:
                 }
                 assessment = governance_assessment(segments, **options)
                 st.metric("Diagnostic status (not model approval)", assessment["status"])
-                st.dataframe(assessment["checks"], use_container_width=True)
-                st.dataframe(assessment["metrics"], use_container_width=True)
+                st.dataframe(assessment["checks"], width="stretch")
+                st.dataframe(assessment["metrics"], width="stretch")
                 st.caption(assessment["limitations"])
                 st.download_button(
                     "Download governance audit report (JSON)",
@@ -431,7 +431,7 @@ if portfolio_upload is not None:
             )
             edited_matrix = st.data_editor(
                 default_matrix, key="mack_pairwise_matrix",
-                use_container_width=True,
+                width="stretch",
             )
             try:
                 checked = validate_correlation_matrix(edited_matrix, names)
@@ -463,12 +463,12 @@ if portfolio_upload is not None:
                 d4.metric("Diversification %", f"{metrics['diversification_pct']:.1%}")
                 st.caption(dashboard["assumptions"])
                 st.subheader("Segment risk ranking (Euler S.E.)")
-                st.dataframe(dashboard["ranking"], use_container_width=True)
+                st.dataframe(dashboard["ranking"], width="stretch")
                 st.bar_chart(dashboard["ranking"].set_index("segment")["euler_se_contribution"])
                 st.subheader("Correlation pair contributions")
-                st.dataframe(dashboard["pairs"], use_container_width=True)
+                st.dataframe(dashboard["pairs"], width="stretch")
                 st.subheader("Alternative common-correlation scenarios")
-                st.dataframe(dashboard["scenarios"], use_container_width=True)
+                st.dataframe(dashboard["scenarios"], width="stretch")
                 st.line_chart(
                     dashboard["scenarios"].set_index("correlation")[
                         ["total_se", "diversification_benefit"]
@@ -541,7 +541,7 @@ if portfolio_upload is not None:
                     diversification_critical=float(diversification_critical),
                 )
                 st.metric("Monitoring status", assessment["status"].upper())
-                st.dataframe(assessment["checks"], use_container_width=True)
+                st.dataframe(assessment["checks"], width="stretch")
                 st.caption(assessment["assumptions"])
                 history_upload = st.file_uploader(
                     "Optional previous monitoring history (JSONL)",
@@ -597,7 +597,7 @@ if portfolio_upload is not None:
                     )
                     st.dataframe(
                         pd.DataFrame(st.session_state["mack_db_alerts"]),
-                        use_container_width=True,
+                        width="stretch",
                     )
                     if st.session_state["mack_db_audit_ok"]:
                         st.success("Local audit hash chain verified")
@@ -620,7 +620,7 @@ if portfolio_upload is not None:
                             if state_filter == "all" or item["state"] == state_filter
                         ]
                         st.dataframe(
-                            pd.DataFrame(visible_alerts), use_container_width=True,
+                            pd.DataFrame(visible_alerts), width="stretch",
                         )
                         editable = [
                             item for item in managed_alerts
@@ -685,7 +685,7 @@ if portfolio_upload is not None:
                         consecutive_breach_warning=int(breach_threshold),
                     )
                     trend_table = history_analysis["timeline"]
-                    st.dataframe(trend_table, use_container_width=True)
+                    st.dataframe(trend_table, width="stretch")
                     st.line_chart(
                         trend_table.set_index("as_of_utc")[
                             ["total_se", "se_change"]
@@ -700,7 +700,7 @@ if portfolio_upload is not None:
                         history_analysis["repeated_breach_warnings"],
                     )
                     st.dataframe(
-                        history_analysis["breaches"], use_container_width=True,
+                        history_analysis["breaches"], width="stretch",
                     )
                     segment_history = history_analysis["segment_trends"]
                     if not segment_history.empty:
@@ -755,7 +755,7 @@ if portfolio_upload is not None:
                     f"95% approximate interval: {aggregated['lower']:,.0f} "
                     f"to {aggregated['upper']:,.0f}"
                 )
-                st.dataframe(aggregated["segments"], use_container_width=True)
+                st.dataframe(aggregated["segments"], width="stretch")
             except ValueError as exc:
                 st.warning(f"Portfolio Mack unavailable: {exc}")
         show_attribution = st.checkbox(
@@ -782,7 +782,7 @@ if portfolio_upload is not None:
                     f"{attribution['total_se']:,.0f}",
                 )
                 st.caption(attribution["assumptions"])
-                st.dataframe(attribution["segments"], use_container_width=True)
+                st.dataframe(attribution["segments"], width="stretch")
                 st.bar_chart(
                     attribution["segments"].set_index("segment")[
                         "euler_se_contribution"
@@ -794,7 +794,7 @@ if portfolio_upload is not None:
                     file_name="mack_segment_attribution.csv",
                     mime="text/csv",
                 )
-                st.dataframe(attribution["pairs"], use_container_width=True)
+                st.dataframe(attribution["pairs"], width="stretch")
                 if not attribution["pairs"].empty:
                     pairs_chart = attribution["pairs"].copy()
                     pairs_chart["pair"] = (
@@ -815,7 +815,7 @@ if portfolio_upload is not None:
         if st.checkbox("Run Mack correlation sensitivity", value=False):
             try:
                 sensitivity = mack_correlation_sensitivity(segments)
-                st.dataframe(sensitivity, use_container_width=True)
+                st.dataframe(sensitivity, width="stretch")
                 st.line_chart(
                     sensitivity.set_index("correlation")[
                         ["total_se", "diversification_benefit"]
@@ -847,7 +847,7 @@ if portfolio_upload is not None:
                         shocks=(-2 * pairwise_shock, -pairwise_shock, 0.0,
                                 pairwise_shock, 2 * pairwise_shock),
                     )
-                    st.dataframe(scenarios, use_container_width=True)
+                    st.dataframe(scenarios, width="stretch")
                     valid_scenarios = scenarios[scenarios["valid_psd"]]
                     if not valid_scenarios.empty:
                         heatmap_data = valid_scenarios.pivot(
@@ -863,7 +863,7 @@ if portfolio_upload is not None:
                                     "color": "Change in Mack S.E."},
                             title="Mack portfolio risk sensitivity",
                         )
-                        st.plotly_chart(fig, use_container_width=True)
+                        st.plotly_chart(fig, width="stretch")
                     st.caption(
                         "Only one symmetric pair changes per scenario. "
                         "Non-PSD scenarios are excluded from the heatmap and "
@@ -1003,7 +1003,7 @@ if portfolio_upload is not None:
             except ValueError as exc:
                 st.warning(f"PDF report unavailable: {exc}")
         portfolio_cases = portfolio_scenarios(segments, inflation_stress, factor_stress)
-        st.dataframe(portfolio_cases, use_container_width=True)
+        st.dataframe(portfolio_cases, width="stretch")
         st.download_button("Download portfolio scenarios (CSV)",
                            portfolio_cases.to_csv(index=False).encode("utf-8"),
                            file_name="portfolio_scenarios.csv", mime="text/csv")
@@ -1033,7 +1033,7 @@ try:
                 }
                 for item in saved_reports
             ],
-            use_container_width=True,
+            width="stretch",
         )
         selected_id = st.selectbox(
             "Select saved report", [item["id"] for item in saved_reports],
@@ -1073,7 +1073,7 @@ try:
                     "or direct database modification."
                 )
                 if history_events:
-                    st.dataframe(history_events, use_container_width=True)
+                    st.dataframe(history_events, width="stretch")
                 st.caption(
                     "Audit chain integrity: "
                     + ("valid" if verify_audit_chain(history_events) else "INVALID")
@@ -1134,8 +1134,8 @@ st.caption("Rolling one-step cumulative-paid holdouts; metrics do not validate u
 if st.checkbox("Run model validation", value=False):
     try:
         validation = validate_models(triangle)
-        st.dataframe(validation["metrics"], use_container_width=True)
-        st.dataframe(validation["by_valuation"], use_container_width=True)
+        st.dataframe(validation["metrics"], width="stretch")
+        st.dataframe(validation["by_valuation"], width="stretch")
         st.metric("ML monitoring alerts", validation["alert_count"])
         st.caption(f"Lowest observed holdout MAE: {validation['preferred_by_mae']}")
         st.download_button(
