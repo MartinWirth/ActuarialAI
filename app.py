@@ -23,6 +23,7 @@ from actuarial_ai.auth import (
     security_events,
     set_user_active,
 )
+from actuarial_ai.alert_management import list_managed_alerts, transition_alert
 from actuarial_ai.backtest import backtest_metrics, rolling_backtest
 from actuarial_ai.data_io import load_triangle, triangle_csv
 from actuarial_ai.explainability import factor_feature_importance
@@ -606,6 +607,62 @@ if portfolio_upload is not None:
                         "Local alerts only. Scheduled polling can ingest externally "
                         "updated snapshot files; it does not recalculate triangles."
                     )
+                st.subheader("Risk alert management (Phase 32)")
+                try:
+                    managed_alerts = list_managed_alerts(db_path)
+                    if managed_alerts:
+                        state_filter = st.selectbox(
+                            "Alert status filter",
+                            ["all", "new", "acknowledged", "resolved"],
+                        )
+                        visible_alerts = [
+                            item for item in managed_alerts
+                            if state_filter == "all" or item["state"] == state_filter
+                        ]
+                        st.dataframe(
+                            pd.DataFrame(visible_alerts), use_container_width=True,
+                        )
+                        editable = [
+                            item for item in managed_alerts
+                            if item["state"] != "resolved"
+                        ]
+                        if editable:
+                            selected_id = st.selectbox(
+                                "Alert to manage",
+                                [item["alert_id"] for item in editable],
+                                format_func=lambda alert_id: next(
+                                    f"#{item['alert_id']} {item['severity'].upper()} "
+                                    f"{item['scope']}/{item['name']} ({item['state']})"
+                                    for item in editable if item["alert_id"] == alert_id
+                                ),
+                            )
+                            selected = next(
+                                item for item in editable
+                                if item["alert_id"] == selected_id
+                            )
+                            target_states = (
+                                ["acknowledged", "resolved"]
+                                if selected["state"] == "new" else ["resolved"]
+                            )
+                            target_state = st.selectbox(
+                                "New alert state", target_states,
+                            )
+                            actor = st.text_input(
+                                "Operator identifier (required for audit)",
+                                key="risk_alert_actor",
+                            )
+                            if st.button("Update alert status"):
+                                try:
+                                    transition_alert(
+                                        db_path, int(selected_id), target_state, actor,
+                                    )
+                                    st.success("Alert status updated; reload to review")
+                                except (OSError, ValueError, TypeError) as exc:
+                                    st.error(f"Alert update failed: {exc}")
+                    else:
+                        st.caption("No alerts have been recorded yet.")
+                except (OSError, ValueError, TypeError) as exc:
+                    st.warning(f"Alert management unavailable: {exc}")
                 snapshot = risk_snapshot(assessment, monitoring_dashboard)
                 all_records = [*history_records, snapshot]
                 try:
