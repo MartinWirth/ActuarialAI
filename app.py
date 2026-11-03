@@ -48,6 +48,12 @@ from actuarial_ai.report_history import get_report, list_reports, save_report
 from actuarial_ai.reporting import analysis_report, report_json
 from actuarial_ai.risk_dashboard import portfolio_risk_dashboard
 from actuarial_ai.risk_limits import assess_risk_limits, risk_snapshot
+from actuarial_ai.risk_monitor import (
+    load_monitoring_alerts,
+    load_monitoring_runs,
+    save_monitoring_run,
+    verify_monitoring_audit,
+)
 from actuarial_ai.risk_sensitivity import portfolio_risk_sensitivity
 from actuarial_ai.risk_trends import monitoring_trends, parse_monitoring_history
 from actuarial_ai.scenarios import scenario_comparison, sensitivity_grid
@@ -548,6 +554,58 @@ if portfolio_upload is not None:
                         )
                     except (ValueError, TypeError) as exc:
                         st.warning(f"Monitoring history unavailable: {exc}")
+                st.subheader("Local SQLite monitoring (Phase 31)")
+                db_path = st.text_input(
+                    "Local monitoring database path",
+                    value="mack_monitoring.sqlite3",
+                    help="Local file on the Streamlit server; restrict access to trusted users.",
+                )
+                if st.button("Persist monitoring run and evaluate alerts"):
+                    try:
+                        stored = save_monitoring_run(
+                            db_path, risk_snapshot(assessment, monitoring_dashboard),
+                        )
+                        st.success(
+                            f"Run {stored['run_id']} saved"
+                            if stored["created"]
+                            else "Identical snapshot already stored",
+                        )
+                        for alert in stored["alerts"]:
+                            st.warning(
+                                f"{alert['scope']}/{alert['name']}: "
+                                f"{alert['previous_status']} -> {alert['status']}"
+                            )
+                    except (OSError, ValueError, TypeError) as exc:
+                        st.error(f"Could not persist monitoring run: {exc}")
+                if st.button("Load local monitoring history and audit"):
+                    try:
+                        persisted = load_monitoring_runs(db_path)
+                        st.session_state["mack_db_history"] = persisted
+                        st.session_state["mack_db_alerts"] = load_monitoring_alerts(
+                            db_path,
+                        )
+                        st.session_state["mack_db_audit_ok"] = (
+                            verify_monitoring_audit(db_path)
+                        )
+                    except (OSError, ValueError, TypeError) as exc:
+                        st.error(f"Could not read monitoring database: {exc}")
+                if "mack_db_history" in st.session_state:
+                    st.caption(
+                        "Persisted snapshots: "
+                        f"{len(st.session_state['mack_db_history'])}"
+                    )
+                    st.dataframe(
+                        pd.DataFrame(st.session_state["mack_db_alerts"]),
+                        use_container_width=True,
+                    )
+                    if st.session_state["mack_db_audit_ok"]:
+                        st.success("Local audit hash chain verified")
+                    else:
+                        st.error("Local audit hash chain verification failed")
+                    st.caption(
+                        "Local alerts only. Scheduled polling can ingest externally "
+                        "updated snapshot files; it does not recalculate triangles."
+                    )
                 snapshot = risk_snapshot(assessment, monitoring_dashboard)
                 all_records = [*history_records, snapshot]
                 try:
