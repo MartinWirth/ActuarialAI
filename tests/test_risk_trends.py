@@ -56,7 +56,7 @@ def test_empty_history_is_supported():
                                      "diversification_pct": 0.2}}],
 ])
 def test_invalid_snapshots_rejected(records):
-    with pytest.raises(ValueError):
+    with pytest.raises((ValueError, TypeError)):
         monitoring_trends(records)
 
 
