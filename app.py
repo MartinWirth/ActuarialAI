@@ -49,6 +49,7 @@ from actuarial_ai.reporting import analysis_report, report_json
 from actuarial_ai.risk_dashboard import portfolio_risk_dashboard
 from actuarial_ai.risk_limits import assess_risk_limits, risk_snapshot
 from actuarial_ai.risk_sensitivity import portfolio_risk_sensitivity
+from actuarial_ai.risk_trends import monitoring_trends, parse_monitoring_history
 from actuarial_ai.scenarios import scenario_comparison, sensitivity_grid
 from actuarial_ai.shap_explain import shap_factor_explanations
 from actuarial_ai.uncertainty import bootstrap_reserves
@@ -541,41 +542,70 @@ if portfolio_upload is not None:
                 )
                 history_records = []
                 if history_upload is not None:
-                    import json
-
                     try:
-                        history_records = [
-                            json.loads(line)
-                            for line in history_upload.getvalue().decode("utf-8").splitlines()
-                            if line.strip()
-                        ]
-                        if any(
-                            not isinstance(record, dict)
-                            or "as_of_utc" not in record
-                            or "overall_status" not in record
-                            or "metrics" not in record
-                            or "total_se" not in record["metrics"]
-                            for record in history_records
-                        ):
-                            raise ValueError("Invalid monitoring history schema")
-                    except (UnicodeDecodeError, ValueError, TypeError) as exc:
+                        history_records = parse_monitoring_history(
+                            history_upload.getvalue(),
+                        )
+                    except ValueError as exc:
                         st.warning(f"Monitoring history unavailable: {exc}")
-                        history_records = []
                 snapshot = risk_snapshot(assessment, monitoring_dashboard)
                 all_records = [*history_records, snapshot]
-                history_table = pd.DataFrame([
-                    {
-                        "as_of_utc": item["as_of_utc"],
-                        "status": item["overall_status"],
-                        "total_se": float(item["metrics"]["total_se"]),
-                    }
-                    for item in all_records
-                ])
-                st.dataframe(history_table, use_container_width=True)
+                try:
+                    history_analysis = monitoring_trends(all_records)
+                except ValueError as exc:
+                    st.warning(f"Risk trend analysis unavailable: {exc}")
+                else:
+                    st.subheader("Historical Mack risk trends")
+                    growth_threshold = st.slider(
+                        "Mack S.E. growth warning per observation",
+                        0.0, 1.0, 0.1, 0.05,
+                    )
+                    breach_threshold = st.number_input(
+                        "Consecutive breach warning count",
+                        min_value=1, max_value=20, value=2,
+                    )
+                    history_analysis = monitoring_trends(
+                        all_records,
+                        growth_warning=float(growth_threshold),
+                        consecutive_breach_warning=int(breach_threshold),
+                    )
+                    trend_table = history_analysis["timeline"]
+                    st.dataframe(trend_table, use_container_width=True)
+                    st.line_chart(
+                        trend_table.set_index("as_of_utc")[
+                            ["total_se", "se_change"]
+                        ],
+                    )
+                    st.metric(
+                        "Risk growth warnings",
+                        history_analysis["growth_warnings"],
+                    )
+                    st.metric(
+                        "Recurring limit breaches",
+                        history_analysis["repeated_breach_warnings"],
+                    )
+                    st.dataframe(
+                        history_analysis["breaches"], use_container_width=True,
+                    )
+                    segment_history = history_analysis["segment_trends"]
+                    if not segment_history.empty:
+                        segment_chart = segment_history.pivot(
+                            index="as_of_utc", columns="name", values="value",
+                        )
+                        st.line_chart(segment_chart)
+                    st.caption(history_analysis["assumptions"])
+                    st.download_button(
+                        "Download risk trend table (CSV)",
+                        trend_table.to_csv(index=False).encode("utf-8"),
+                        file_name="mack_risk_trends.csv",
+                        mime="text/csv",
+                    )
+                import json
+
                 st.download_button(
                     "Download monitoring history (JSONL)",
                     ("\\n".join(
-                        report_json(record).decode("utf-8").replace("\\n", "")
+                        json.dumps(record, ensure_ascii=False, allow_nan=False)
                         for record in all_records
                     ) + "\\n").encode("utf-8"),
                     file_name="mack_monitoring_history.jsonl",
