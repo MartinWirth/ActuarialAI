@@ -31,6 +31,12 @@ from actuarial_ai.auth import (
 from actuarial_ai.backtest import backtest_metrics, rolling_backtest
 from actuarial_ai.data_io import load_triangle, triangle_csv
 from actuarial_ai.explainability import factor_feature_importance
+from actuarial_ai.forecast_deployment import (
+    active_forecast_model,
+    champion_challenger,
+    deploy_forecast_model,
+    deployment_history,
+)
 from actuarial_ai.forecast_model_registry import (
     list_forecast_models,
     model_audit_events,
@@ -904,6 +910,60 @@ if portfolio_upload is not None:
                             st.info("No forecast models registered yet")
                     except (OSError, ValueError, PermissionError) as exc:
                         st.warning(f"Model registry unavailable: {exc}")
+                    st.subheader("Model deployment & lifecycle (Phase 38)")
+                    try:
+                        active_model = active_forecast_model(
+                            DB_PATH, session_token,
+                        )
+                        st.write(
+                            "Active champion:",
+                            active_model if active_model else "None",
+                        )
+                        comparisons = champion_challenger(
+                            DB_PATH, session_token,
+                        )
+                        if comparisons:
+                            st.dataframe(
+                                pd.DataFrame(comparisons), width="stretch",
+                            )
+                        deployments = deployment_history(
+                            DB_PATH, session_token,
+                        )
+                        if deployments:
+                            st.dataframe(
+                                pd.DataFrame(deployments), width="stretch",
+                            )
+                        approved_ids = [
+                            model["model_id"] for model in registered_models
+                            if model["status"] == "APPROVED"
+                        ]
+                        if current_user["role"] == "REVIEWER" and approved_ids:
+                            with st.form("forecast_deployment"):
+                                deployment_id = st.selectbox(
+                                    "Approved model to activate", approved_ids,
+                                )
+                                rollback_model = st.checkbox(
+                                    "Rollback to previously active model",
+                                )
+                                deployment_reason = st.text_input(
+                                    "Deployment decision reason",
+                                )
+                                deploy_now = st.form_submit_button(
+                                    "Record deployment",
+                                )
+                            if deploy_now:
+                                try:
+                                    deploy_forecast_model(
+                                        DB_PATH, session_token,
+                                        deployment_id, deployment_reason,
+                                        rollback=rollback_model,
+                                    )
+                                    st.success("Deployment decision recorded")
+                                    st.rerun()
+                                except (ValueError, PermissionError) as exc:
+                                    st.error(str(exc))
+                    except (OSError, ValueError, PermissionError) as exc:
+                        st.warning(f"Model deployment unavailable: {exc}")
                     st.download_button(
                         "Download alert report (CSV)",
                         data=report_csv(management),
