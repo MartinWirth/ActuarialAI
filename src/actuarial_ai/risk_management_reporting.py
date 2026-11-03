@@ -28,6 +28,10 @@ def risk_management_report(
     current = current.astimezone(timezone.utc)
     alerts = alert_automation_overview(path, now=current)
     with _connect(path) as db:
+        created_by_alert = dict(db.execute(
+            "SELECT a.id,r.created_utc FROM monitoring_alerts a "
+            "JOIN monitoring_runs r ON r.id=a.run_id"
+        ).fetchall())
         run_rows = db.execute(
             "SELECT id,created_utc,snapshot_json FROM monitoring_runs ORDER BY id"
         ).fetchall()
@@ -51,20 +55,11 @@ def risk_management_report(
     durations = []
     for a in resolved:
         if a["updated_utc"]:
-            # The workflow stores the latest transition timestamp.
-            created = current.replace(year=current.year)
-            with _connect(path) as db:
-                row = db.execute(
-                    "SELECT r.created_utc FROM monitoring_alerts a "
-                    "JOIN monitoring_runs r ON r.id=a.run_id WHERE a.id=?",
-                    (a["alert_id"],),
-                ).fetchone()
-            if row:
-                created = datetime.fromisoformat(row[0])
-                duration = (
-                    datetime.fromisoformat(a["updated_utc"]) - created
-                ).total_seconds() / 3600
-                durations.append(max(0.0, duration))
+            created = datetime.fromisoformat(created_by_alert[a["alert_id"]])
+            duration = (
+                datetime.fromisoformat(a["updated_utc"]) - created
+            ).total_seconds() / 3600
+            durations.append(max(0.0, duration))
     return {
         "as_of_utc": current.isoformat(),
         "sla_hours": sla_hours,
