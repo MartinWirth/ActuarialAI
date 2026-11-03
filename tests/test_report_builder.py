@@ -198,3 +198,35 @@ def test_mack_risk_limits_pdf_and_report_identity():
     text = "\n".join(page.extract_text() for page in PdfReader(BytesIO(pdf)).pages)
     assert "Mack risk limits and early warnings" in text
     assert "Overall diagnostic status" in text
+
+
+def test_historical_mack_risk_trends_pdf_and_identity():
+    import json
+
+    snapshots = [
+        {
+            "schema_version": "1.0",
+            "as_of_utc": f"2026-11-{day:02d}T12:00:00+00:00",
+            "overall_status": status,
+            "metrics": {"total_se": se, "diversification_pct": 0.2},
+            "checks": [{
+                "scope": "segment", "name": "Motor",
+                "status": status, "value": 0.5,
+            }],
+        }
+        for day, se, status in [(1, 100, "green"), (2, 120, "yellow")]
+    ]
+    history = "\n".join(json.dumps(record) for record in snapshots)
+    base = ReportOptions(
+        include_mack=True, include_risk=False, include_governance=False,
+    )
+    enabled = ReportOptions(
+        include_mack=True, include_risk_trends=True,
+        risk_history_jsonl=history,
+        include_risk=False, include_governance=False,
+    )
+    assert report_identity(sample(), base) != report_identity(sample(), enabled)
+    pdf, _ = configurable_portfolio_pdf(sample(), options=enabled)
+    text = "\n".join(page.extract_text() for page in PdfReader(BytesIO(pdf)).pages)
+    assert "Historical Mack risk trends" in text
+    assert "growth warnings" in text
