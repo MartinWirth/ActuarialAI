@@ -182,3 +182,19 @@ def test_consolidated_risk_dashboard_pdf_and_identity():
     assert "Consolidated Mack risk dashboard" in text
     assert "Alternative common-correlation scenarios" in text
     assert "Euler S.E." in text
+
+
+def test_mack_risk_limits_pdf_and_report_identity():
+    base = ReportOptions(
+        include_mack=True, include_risk=False, include_governance=False,
+    )
+    enabled = ReportOptions(
+        include_mack=True, include_risk_limits=True,
+        risk_limit_warning=100000.0, risk_limit_critical=200000.0,
+        include_risk=False, include_governance=False,
+    )
+    assert report_identity(sample(), base) != report_identity(sample(), enabled)
+    pdf, _ = configurable_portfolio_pdf(sample(), options=enabled)
+    text = "\n".join(page.extract_text() for page in PdfReader(BytesIO(pdf)).pages)
+    assert "Mack risk limits and early warnings" in text
+    assert "Overall diagnostic status" in text
