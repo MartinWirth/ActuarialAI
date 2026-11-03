@@ -46,6 +46,7 @@ from actuarial_ai.quality import quality_csv, quality_report
 from actuarial_ai.report_builder import ReportOptions, configurable_portfolio_pdf
 from actuarial_ai.report_history import get_report, list_reports, save_report
 from actuarial_ai.reporting import analysis_report, report_json
+from actuarial_ai.risk_dashboard import portfolio_risk_dashboard
 from actuarial_ai.risk_sensitivity import portfolio_risk_sensitivity
 from actuarial_ai.scenarios import scenario_comparison, sensitivity_grid
 from actuarial_ai.shap_explain import shap_factor_explanations
@@ -431,6 +432,54 @@ if portfolio_upload is not None:
                 st.success("Correlation matrix is positive semidefinite.")
             except ValueError as exc:
                 st.warning(f"Invalid correlation matrix: {exc}")
+        if st.checkbox("Show consolidated portfolio risk dashboard", value=False):
+            try:
+                names = sorted(segments)
+                if use_mack_matrix:
+                    if custom_mack_matrix is None:
+                        raise ValueError("Correct the correlation matrix first")
+                    dashboard_matrix = custom_mack_matrix
+                else:
+                    dashboard_matrix = pd.DataFrame(
+                        [[1.0 if a == b else float(mack_correlation)
+                          for b in names] for a in names],
+                        index=names, columns=names,
+                    )
+                dashboard = portfolio_risk_dashboard(segments, dashboard_matrix)
+                metrics = dashboard["metrics"]
+                d1, d2, d3, d4 = st.columns(4)
+                d1.metric("Portfolio Mack S.E.", f"{metrics['total_se']:,.0f}")
+                d2.metric("Independent S.E.", f"{metrics['independent_se']:,.0f}")
+                d3.metric("Diversification benefit", f"{metrics['diversification_benefit']:,.0f}")
+                d4.metric("Diversification %", f"{metrics['diversification_pct']:.1%}")
+                st.caption(dashboard["assumptions"])
+                st.subheader("Segment risk ranking (Euler S.E.)")
+                st.dataframe(dashboard["ranking"], use_container_width=True)
+                st.bar_chart(dashboard["ranking"].set_index("segment")["euler_se_contribution"])
+                st.subheader("Correlation pair contributions")
+                st.dataframe(dashboard["pairs"], use_container_width=True)
+                st.subheader("Alternative common-correlation scenarios")
+                st.dataframe(dashboard["scenarios"], use_container_width=True)
+                st.line_chart(
+                    dashboard["scenarios"].set_index("correlation")[
+                        ["total_se", "diversification_benefit"]
+                    ],
+                )
+                st.download_button(
+                    "Download consolidated risk dashboard (JSON)",
+                    report_json({
+                        "metrics": metrics,
+                        "ranking": dashboard["ranking"].to_dict(orient="records"),
+                        "pairs": dashboard["pairs"].to_dict(orient="records"),
+                        "scenarios": dashboard["scenarios"].to_dict(orient="records"),
+                        "matrix": dashboard["matrix"].to_dict(orient="index"),
+                        "assumptions": dashboard["assumptions"],
+                    }),
+                    file_name="portfolio_risk_dashboard.json",
+                    mime="application/json",
+                )
+            except ValueError as exc:
+                st.warning(f"Portfolio risk dashboard unavailable: {exc}")
         if st.checkbox("Calculate aggregate Mack uncertainty", value=False):
             try:
                 if use_mack_matrix:
@@ -581,6 +630,10 @@ if portfolio_upload is not None:
                 show_risk = st.checkbox("Include Monte Carlo risk", value=True)
                 show_governance = st.checkbox("Include governance", value=True)
                 show_mack = st.checkbox("Include Mack uncertainty by segment", value=True)
+                show_risk_dashboard = st.checkbox(
+                    "Include consolidated Mack risk dashboard", value=False,
+                    disabled=not show_mack,
+                )
                 show_mack_attribution = st.checkbox(
                     "Include Mack risk attribution", value=False,
                     disabled=not show_mack,
@@ -606,6 +659,7 @@ if portfolio_upload is not None:
                     include_risk=show_risk,
                     include_governance=show_governance,
                     include_mack=show_mack,
+                    include_risk_dashboard=show_mack and show_risk_dashboard,
                     include_mack_attribution=show_mack and show_mack_attribution,
                     include_mack_sensitivity=show_mack and show_mack_sensitivity,
                     include_mack_matrix_sensitivity=(
