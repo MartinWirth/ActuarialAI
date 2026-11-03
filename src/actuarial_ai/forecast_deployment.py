@@ -1,14 +1,9 @@
 """Controlled activation of approved forecast candidates (local demonstration)."""
-import hashlib
 import json
-import sqlite3
 from datetime import datetime, timezone
-
-import numpy as np
 
 from .auth import require_permission
 from .forecast_model_registry import (
-    _canonical,
     _connect,
     _digest,
     verify_model_audit,
