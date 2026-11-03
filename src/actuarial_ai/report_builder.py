@@ -226,7 +226,7 @@ def configurable_portfolio_pdf(
                 if not records:
                     raise ValueError("Upload historical monitoring snapshots first")
                 analysis = monitoring_trends(records)
-            except ValueError as exc:
+            except (ValueError, TypeError) as exc:
                 story.append(Paragraph(
                     f"Risk trend analysis unavailable: {escape(str(exc))}",
                     styles["Normal"],
