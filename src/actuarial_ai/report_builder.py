@@ -24,6 +24,7 @@ from .portfolio_mack import aggregate_mack
 from .portfolio_risk import simulate_portfolio_risk
 from .risk_dashboard import portfolio_risk_dashboard
 from .risk_limits import assess_risk_limits
+from .risk_trends import monitoring_trends, parse_monitoring_history
 
 
 @dataclass(frozen=True)
@@ -35,6 +36,8 @@ class ReportOptions:
     include_mack: bool = False
     include_risk_dashboard: bool = False
     include_risk_limits: bool = False
+    include_risk_trends: bool = False
+    risk_history_jsonl: str = ""
     risk_limit_warning: float = 100000.0
     risk_limit_critical: float = 200000.0
     include_mack_attribution: bool = False
@@ -213,6 +216,55 @@ def configurable_portfolio_pdf(
                 f"{aggregate['diversification_benefit']:,.2f}.",
                 styles["Normal"],
             ))
+        if options.include_risk_trends:
+            story.append(Spacer(1, 8))
+            story.append(Paragraph(
+                "Historical Mack risk trends", styles["Heading3"],
+            ))
+            try:
+                records = parse_monitoring_history(options.risk_history_jsonl)
+                if not records:
+                    raise ValueError("Upload historical monitoring snapshots first")
+                analysis = monitoring_trends(records)
+            except ValueError as exc:
+                story.append(Paragraph(
+                    f"Risk trend analysis unavailable: {escape(str(exc))}",
+                    styles["Normal"],
+                ))
+            else:
+                timeline = analysis["timeline"]
+                first = timeline.iloc[0]
+                last = timeline.iloc[-1]
+                story.append(Paragraph(
+                    f"Observations: {len(timeline)}; "
+                    f"first Mack S.E.: {first['total_se']:,.0f}; "
+                    f"latest Mack S.E.: {last['total_se']:,.0f}; "
+                    f"growth warnings: {analysis['growth_warnings']}; "
+                    f"recurring breach warnings: "
+                    f"{analysis['repeated_breach_warnings']}.",
+                    styles["Normal"],
+                ))
+                rows = [["As of (UTC)", "Status", "Mack S.E.", "Change"]]
+                for _, item in timeline.tail(15).iterrows():
+                    change = item["se_change"]
+                    rows.append([
+                        item["as_of_utc"].strftime("%Y-%m-%d %H:%M"),
+                        str(item["status"]).upper(),
+                        f"{item['total_se']:,.0f}",
+                        f"{change:,.0f}" if pd.notna(change) else "-",
+                    ])
+                table = Table(rows, colWidths=[160, 85, 125, 120], repeatRows=1)
+                table.setStyle(TableStyle([
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E6EDF5")),
+                    ("GRID", (0, 0), (-1, -1), 0.3, colors.lightgrey),
+                ]))
+                story.append(table)
+                story.append(Paragraph(
+                    "History is supplied by the report user; no automatic "
+                    "server-side persistence or scheduled monitoring. "
+                    "Changes are per observation, not annualized.",
+                    styles["Normal"],
+                ))
         if options.include_risk_limits:
             story.append(Spacer(1, 8))
             story.append(Paragraph(
