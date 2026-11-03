@@ -4,6 +4,7 @@ import plotly.express as px
 import streamlit as st
 
 from actuarial_ai import chain_ladder, synthetic_triangle
+from actuarial_ai.alert_management import list_managed_alerts, transition_alert
 from actuarial_ai.approval_workflow import (
     audit_events,
     audit_export,
@@ -23,7 +24,6 @@ from actuarial_ai.auth import (
     security_events,
     set_user_active,
 )
-from actuarial_ai.alert_management import list_managed_alerts, transition_alert
 from actuarial_ai.backtest import backtest_metrics, rolling_backtest
 from actuarial_ai.data_io import load_triangle, triangle_csv
 from actuarial_ai.explainability import factor_feature_importance
