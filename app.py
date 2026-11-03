@@ -535,9 +535,55 @@ if portfolio_upload is not None:
                 st.metric("Monitoring status", assessment["status"].upper())
                 st.dataframe(assessment["checks"], use_container_width=True)
                 st.caption(assessment["assumptions"])
+                history_upload = st.file_uploader(
+                    "Optional previous monitoring history (JSONL)",
+                    type=["jsonl"], key="mack_monitoring_history",
+                )
+                history_records = []
+                if history_upload is not None:
+                    import json
+
+                    try:
+                        history_records = [
+                            json.loads(line)
+                            for line in history_upload.getvalue().decode("utf-8").splitlines()
+                            if line.strip()
+                        ]
+                        if any(
+                            not isinstance(record, dict)
+                            or "as_of_utc" not in record
+                            or "overall_status" not in record
+                            or "metrics" not in record
+                            or "total_se" not in record["metrics"]
+                            for record in history_records
+                        ):
+                            raise ValueError("Invalid monitoring history schema")
+                    except (UnicodeDecodeError, ValueError, TypeError) as exc:
+                        st.warning(f"Monitoring history unavailable: {exc}")
+                        history_records = []
+                snapshot = risk_snapshot(assessment, monitoring_dashboard)
+                all_records = [*history_records, snapshot]
+                history_table = pd.DataFrame([
+                    {
+                        "as_of_utc": item["as_of_utc"],
+                        "status": item["overall_status"],
+                        "total_se": float(item["metrics"]["total_se"]),
+                    }
+                    for item in all_records
+                ])
+                st.dataframe(history_table, use_container_width=True)
+                st.download_button(
+                    "Download monitoring history (JSONL)",
+                    ("\\n".join(
+                        report_json(record).decode("utf-8").replace("\\n", "")
+                        for record in all_records
+                    ) + "\\n").encode("utf-8"),
+                    file_name="mack_monitoring_history.jsonl",
+                    mime="application/x-ndjson",
+                )
                 st.download_button(
                     "Download risk monitoring snapshot (JSON)",
-                    report_json(risk_snapshot(assessment, monitoring_dashboard)),
+                    report_json(snapshot),
                     file_name="mack_risk_monitoring_snapshot.json",
                     mime="application/json",
                 )
