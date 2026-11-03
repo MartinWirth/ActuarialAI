@@ -166,3 +166,19 @@ def test_mack_attribution_pdf_and_report_identity():
     assert "Mack portfolio risk attribution" in text
     assert "Pairwise cross-variance contributions" in text
     assert "Euler S.E." in text
+
+
+def test_consolidated_risk_dashboard_pdf_and_identity():
+    base = ReportOptions(
+        include_mack=True, include_risk=False, include_governance=False,
+    )
+    enabled = ReportOptions(
+        include_mack=True, include_risk_dashboard=True,
+        include_risk=False, include_governance=False,
+    )
+    assert report_identity(sample(), base) != report_identity(sample(), enabled)
+    pdf, _ = configurable_portfolio_pdf(sample(), options=enabled)
+    text = "\n".join(page.extract_text() for page in PdfReader(BytesIO(pdf)).pages)
+    assert "Consolidated Mack risk dashboard" in text
+    assert "Alternative common-correlation scenarios" in text
+    assert "Euler S.E." in text
