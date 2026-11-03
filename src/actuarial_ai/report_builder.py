@@ -14,6 +14,7 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from .mack import mack_chain_ladder
+from .mack_attribution import mack_risk_attribution
 from .mack_matrix import aggregate_mack_matrix
 from .mack_matrix_sensitivity import mack_matrix_sensitivity
 from .mack_sensitivity import mack_correlation_sensitivity
@@ -30,6 +31,7 @@ class ReportOptions:
     include_governance: bool = True
     include_charts: bool = True
     include_mack: bool = False
+    include_mack_attribution: bool = False
     include_mack_sensitivity: bool = False
     mack_correlation: float = 0.0
     mack_matrix: tuple[tuple[float, ...], ...] | None = None
@@ -205,6 +207,79 @@ def configurable_portfolio_pdf(
                 f"{aggregate['diversification_benefit']:,.2f}.",
                 styles["Normal"],
             ))
+        if options.include_mack_attribution:
+            story.append(Spacer(1, 8))
+            story.append(Paragraph(
+                "Mack portfolio risk attribution", styles["Heading3"],
+            ))
+            try:
+                names = sorted(segments)
+                if options.mack_matrix is None:
+                    matrix = pd.DataFrame(
+                        [[1.0 if a == b else options.mack_correlation
+                          for b in names] for a in names],
+                        index=names, columns=names,
+                    )
+                else:
+                    matrix = pd.DataFrame(
+                        options.mack_matrix, index=names, columns=names,
+                    )
+                attribution = mack_risk_attribution(
+                    segments, matrix, confidence=options.confidence,
+                )
+            except ValueError as exc:
+                story.append(Paragraph(
+                    f"Attribution unavailable: {escape(str(exc))}",
+                    styles["Normal"],
+                ))
+            else:
+                rows = [[
+                    "Segment", "Standalone S.E.", "Variance share", "Euler S.E.",
+                ]]
+                for _, item in attribution["segments"].iterrows():
+                    rows.append([
+                        Paragraph(escape(str(item["segment"])), styles["Normal"]),
+                        f"{item['standalone_se']:,.0f}",
+                        f"{item['se_share']:.1%}",
+                        f"{item['euler_se_contribution']:,.0f}",
+                    ])
+                table = Table(rows, colWidths=[145, 125, 105, 115], repeatRows=1)
+                table.setStyle(TableStyle([
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E6EDF5")),
+                    ("GRID", (0, 0), (-1, -1), 0.3, colors.lightgrey),
+                ]))
+                story.append(table)
+                story.append(Paragraph(
+                    "Pairwise cross-variance contributions", styles["Heading3"],
+                ))
+                pair_rows = [["Pair", "Corr.", "Cross-variance", "Variance share"]]
+                for _, item in attribution["pairs"].iterrows():
+                    pair_rows.append([
+                        Paragraph(
+                            escape(f"{item['segment_a']} / {item['segment_b']}"),
+                            styles["Normal"],
+                        ),
+                        f"{item['correlation']:.2f}",
+                        f"{item['cross_variance']:,.0f}",
+                        f"{item['share_of_variance']:.1%}",
+                    ])
+                if len(pair_rows) > 1:
+                    table = Table(
+                        pair_rows, colWidths=[175, 65, 130, 120],
+                        repeatRows=1,
+                    )
+                    table.setStyle(TableStyle([
+                        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E6EDF5")),
+                        ("GRID", (0, 0), (-1, -1), 0.3, colors.lightgrey),
+                    ]))
+                    story.append(table)
+                story.append(Paragraph(
+                    "Euler contributions sum to portfolio Mack S.E.; "
+                    "pairwise cross-variance contributions sum to covariance "
+                    "effects only. Negative allocations are possible. "
+                    "Correlations are user assumptions, not estimates.",
+                    styles["Normal"],
+                ))
         if options.include_mack_sensitivity:
             story.append(Spacer(1, 8))
             story.append(Paragraph(
