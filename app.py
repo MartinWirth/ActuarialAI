@@ -28,6 +28,7 @@ from actuarial_ai.data_io import load_triangle, triangle_csv
 from actuarial_ai.explainability import factor_feature_importance
 from actuarial_ai.governance import monitoring_report
 from actuarial_ai.mack import mack_chain_ladder
+from actuarial_ai.mack_attribution import mack_risk_attribution
 from actuarial_ai.mack_matrix import aggregate_mack_matrix, validate_correlation_matrix
 from actuarial_ai.mack_matrix_sensitivity import mack_matrix_sensitivity
 from actuarial_ai.mack_sensitivity import mack_correlation_sensitivity
@@ -454,6 +455,60 @@ if portfolio_upload is not None:
                 st.dataframe(aggregated["segments"], use_container_width=True)
             except ValueError as exc:
                 st.warning(f"Portfolio Mack unavailable: {exc}")
+        show_attribution = st.checkbox(
+            "Run Mack portfolio risk attribution", value=False,
+        )
+        if show_attribution:
+            try:
+                names = sorted(segments)
+                if use_mack_matrix:
+                    if custom_mack_matrix is None:
+                        raise ValueError("Correct the correlation matrix first")
+                    attribution_matrix = custom_mack_matrix
+                else:
+                    attribution_matrix = pd.DataFrame(
+                        [[1.0 if a == b else float(mack_correlation)
+                          for b in names] for a in names],
+                        index=names, columns=names,
+                    )
+                attribution = mack_risk_attribution(
+                    segments, attribution_matrix,
+                )
+                st.metric(
+                    "Attributed portfolio Mack S.E.",
+                    f"{attribution['total_se']:,.0f}",
+                )
+                st.caption(attribution["assumptions"])
+                st.dataframe(attribution["segments"], use_container_width=True)
+                st.bar_chart(
+                    attribution["segments"].set_index("segment")[
+                        "euler_se_contribution"
+                    ],
+                )
+                st.download_button(
+                    "Download segment Mack attribution (CSV)",
+                    attribution["segments"].to_csv(index=False).encode("utf-8"),
+                    file_name="mack_segment_attribution.csv",
+                    mime="text/csv",
+                )
+                st.dataframe(attribution["pairs"], use_container_width=True)
+                if not attribution["pairs"].empty:
+                    pairs_chart = attribution["pairs"].copy()
+                    pairs_chart["pair"] = (
+                        pairs_chart["segment_a"] + " / "
+                        + pairs_chart["segment_b"]
+                    )
+                    st.bar_chart(
+                        pairs_chart.set_index("pair")["cross_variance"],
+                    )
+                st.download_button(
+                    "Download pairwise Mack attribution (CSV)",
+                    attribution["pairs"].to_csv(index=False).encode("utf-8"),
+                    file_name="mack_pair_attribution.csv",
+                    mime="text/csv",
+                )
+            except ValueError as exc:
+                st.warning(f"Mack attribution unavailable: {exc}")
         if st.checkbox("Run Mack correlation sensitivity", value=False):
             try:
                 sensitivity = mack_correlation_sensitivity(segments)
@@ -526,6 +581,10 @@ if portfolio_upload is not None:
                 show_risk = st.checkbox("Include Monte Carlo risk", value=True)
                 show_governance = st.checkbox("Include governance", value=True)
                 show_mack = st.checkbox("Include Mack uncertainty by segment", value=True)
+                show_mack_attribution = st.checkbox(
+                    "Include Mack risk attribution", value=False,
+                    disabled=not show_mack,
+                )
                 show_mack_sensitivity = st.checkbox(
                     "Include Mack correlation sensitivity", value=True,
                 )
@@ -547,6 +606,7 @@ if portfolio_upload is not None:
                     include_risk=show_risk,
                     include_governance=show_governance,
                     include_mack=show_mack,
+                    include_mack_attribution=show_mack and show_mack_attribution,
                     include_mack_sensitivity=show_mack and show_mack_sensitivity,
                     include_mack_matrix_sensitivity=(
                         show_mack and use_mack_matrix and show_pairwise_pdf
