@@ -52,6 +52,7 @@ from actuarial_ai.report_builder import ReportOptions, configurable_portfolio_pd
 from actuarial_ai.report_history import get_report, list_reports, save_report
 from actuarial_ai.reporting import analysis_report, report_json
 from actuarial_ai.risk_dashboard import portfolio_risk_dashboard
+from actuarial_ai.risk_forecasting import forecast_mack_risk
 from actuarial_ai.risk_limits import assess_risk_limits, risk_snapshot
 from actuarial_ai.risk_management_reporting import (
     report_csv,
@@ -724,6 +725,55 @@ if portfolio_upload is not None:
                             trends_frame.set_index("created_utc")["total_se"]
                         )
                         st.dataframe(trends_frame, width="stretch")
+                    st.subheader("Risk forecasting & early warning (Phase 35)")
+                    st.caption(
+                        "Exploratory projection by observation, not by date. "
+                        "Residual bands are not calibrated prediction intervals."
+                    )
+                    forecast_horizon = st.slider(
+                        "Forecast observations ahead", 1, 12, 3,
+                    )
+                    forecast_warning = st.number_input(
+                        "Forecast Mack SE warning threshold",
+                        min_value=0.0, value=100000.0,
+                        key="forecast_se_warning",
+                    )
+                    forecast_critical = st.number_input(
+                        "Forecast Mack SE critical threshold",
+                        min_value=0.0, value=200000.0,
+                        key="forecast_se_critical",
+                    )
+                    forecast_stress = st.slider(
+                        "Forecast scenario shock (%)", 0, 100, 20,
+                    ) / 100
+                    try:
+                        projection = forecast_mack_risk(
+                            management["risk_trend"],
+                            horizon=forecast_horizon,
+                            warning=forecast_warning,
+                            critical=forecast_critical,
+                            stress_pct=forecast_stress,
+                        )
+                        st.metric(
+                            "Walk-forward forecast MAE",
+                            f"{projection['walk_forward_mae']:,.2f}",
+                        )
+                        st.write(
+                            f"Risk trend: {projection['trend']} | "
+                            f"Slope per observation: "
+                            f"{projection['slope_per_observation']:,.2f}"
+                        )
+                        projected = pd.DataFrame(projection["forecast"])
+                        st.dataframe(projected, width="stretch")
+                        st.line_chart(
+                            projected.set_index("step")[
+                                ["estimate", "lower", "upper",
+                                 "optimistic", "stressed"]
+                            ]
+                        )
+                        st.caption(projection["assumptions"])
+                    except ValueError as exc:
+                        st.info(f"Risk forecast unavailable: {exc}")
                     st.download_button(
                         "Download alert report (CSV)",
                         data=report_csv(management),
