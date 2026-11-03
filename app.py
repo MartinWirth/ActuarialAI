@@ -4,6 +4,10 @@ import plotly.express as px
 import streamlit as st
 
 from actuarial_ai import chain_ladder, synthetic_triangle
+from actuarial_ai.alert_automation import (
+    alert_automation_overview,
+    process_alert_automation,
+)
 from actuarial_ai.alert_management import list_managed_alerts, transition_alert
 from actuarial_ai.approval_workflow import (
     audit_events,
@@ -663,6 +667,30 @@ if portfolio_upload is not None:
                         st.caption("No alerts have been recorded yet.")
                 except (OSError, ValueError, TypeError) as exc:
                     st.warning(f"Alert management unavailable: {exc}")
+                st.subheader("Risk automation (Phase 33)")
+                escalation_hours = st.number_input(
+                    "Escalate unacknowledged critical alerts after (hours)",
+                    min_value=1.0, max_value=8760.0, value=24.0,
+                )
+                if st.button("Run alert automation now"):
+                    try:
+                        automation_result = process_alert_automation(
+                            db_path, critical_after_hours=escalation_hours,
+                        )
+                        st.success(
+                            f"Auto-resolved: {len(automation_result['resolved'])}; "
+                            f"overdue escalations: {len(automation_result['escalated'])}"
+                        )
+                    except (OSError, ValueError, TypeError) as exc:
+                        st.error(f"Alert automation failed: {exc}")
+                try:
+                    overview = alert_automation_overview(db_path)
+                    if overview:
+                        st.dataframe(
+                            pd.DataFrame(overview), width="stretch",
+                        )
+                except (OSError, ValueError, TypeError) as exc:
+                    st.warning(f"Automation overview unavailable: {exc}")
                 snapshot = risk_snapshot(assessment, monitoring_dashboard)
                 all_records = [*history_records, snapshot]
                 try:
