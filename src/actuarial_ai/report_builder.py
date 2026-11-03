@@ -23,6 +23,7 @@ from .portfolio_governance import governance_assessment
 from .portfolio_mack import aggregate_mack
 from .portfolio_risk import simulate_portfolio_risk
 from .risk_dashboard import portfolio_risk_dashboard
+from .risk_limits import assess_risk_limits
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,9 @@ class ReportOptions:
     include_charts: bool = True
     include_mack: bool = False
     include_risk_dashboard: bool = False
+    include_risk_limits: bool = False
+    risk_limit_warning: float = 100000.0
+    risk_limit_critical: float = 200000.0
     include_mack_attribution: bool = False
     include_mack_sensitivity: bool = False
     mack_correlation: float = 0.0
@@ -209,6 +213,64 @@ def configurable_portfolio_pdf(
                 f"{aggregate['diversification_benefit']:,.2f}.",
                 styles["Normal"],
             ))
+        if options.include_risk_limits:
+            story.append(Spacer(1, 8))
+            story.append(Paragraph(
+                "Mack risk limits and early warnings", styles["Heading3"],
+            ))
+            try:
+                names = sorted(segments)
+                if options.mack_matrix is None:
+                    matrix = pd.DataFrame(
+                        [[1.0 if a == b else options.mack_correlation
+                          for b in names] for a in names],
+                        index=names, columns=names,
+                    )
+                else:
+                    matrix = pd.DataFrame(
+                        options.mack_matrix, index=names, columns=names,
+                    )
+                dashboard = portfolio_risk_dashboard(
+                    segments, matrix, confidence=options.confidence,
+                )
+                monitoring = assess_risk_limits(
+                    dashboard,
+                    portfolio_warning=options.risk_limit_warning,
+                    portfolio_critical=options.risk_limit_critical,
+                )
+            except ValueError as exc:
+                story.append(Paragraph(
+                    f"Risk limits unavailable: {escape(str(exc))}",
+                    styles["Normal"],
+                ))
+            else:
+                story.append(Paragraph(
+                    f"Overall diagnostic status: {monitoring['status'].upper()}",
+                    styles["Normal"],
+                ))
+                rows = [["Scope", "Check", "Observed", "Warning", "Critical", "Status"]]
+                for _, item in monitoring["checks"].iterrows():
+                    rows.append([
+                        str(item["scope"]),
+                        Paragraph(escape(str(item["name"])), styles["Normal"]),
+                        f"{item['value']:,.2f}",
+                        f"{item['warning']:,.2f}",
+                        f"{item['critical']:,.2f}",
+                        str(item["status"]).upper(),
+                    ])
+                table = Table(
+                    rows, colWidths=[65, 120, 80, 80, 80, 65], repeatRows=1,
+                )
+                table.setStyle(TableStyle([
+                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#E6EDF5")),
+                    ("GRID", (0, 0), (-1, -1), 0.3, colors.lightgrey),
+                ]))
+                story.append(table)
+                story.append(Paragraph(
+                    "Limits are user-defined diagnostics. Segment concentration "
+                    "uses absolute Euler shares. No automated alert delivery.",
+                    styles["Normal"],
+                ))
         if options.include_risk_dashboard:
             story.append(Spacer(1, 8))
             story.append(Paragraph(
