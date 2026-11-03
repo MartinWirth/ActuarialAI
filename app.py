@@ -31,6 +31,13 @@ from actuarial_ai.auth import (
 from actuarial_ai.backtest import backtest_metrics, rolling_backtest
 from actuarial_ai.data_io import load_triangle, triangle_csv
 from actuarial_ai.explainability import factor_feature_importance
+from actuarial_ai.forecast_model_registry import (
+    list_forecast_models,
+    model_audit_events,
+    register_forecast_model,
+    transition_forecast_model,
+    verify_model_audit,
+)
 from actuarial_ai.governance import monitoring_report
 from actuarial_ai.mack import mack_chain_ladder
 from actuarial_ai.mack_attribution import mack_risk_attribution
@@ -810,6 +817,93 @@ if portfolio_upload is not None:
                         st.caption(validation["assumptions"])
                     except ValueError as exc:
                         st.info(f"Forecast validation unavailable: {exc}")
+                    st.subheader("Automated model governance (Phase 37)")
+                    st.caption(
+                        "Model evidence is validated when registered. "
+                        "Approval requires a separate REVIEWER account."
+                    )
+                    if current_user["role"] in {"ACTUARY", "ADMIN"}:
+                        model_choice = st.selectbox(
+                            "Model to register",
+                            ["linear", "moving_average", "naive"],
+                        )
+                        if st.button("Validate and register model"):
+                            try:
+                                registered = register_forecast_model(
+                                    DB_PATH, session_token,
+                                    management["risk_trend"],
+                                    model_name=model_choice,
+                                    window=validation_window,
+                                    drift_threshold=drift_threshold,
+                                )
+                                st.success(
+                                    f"Registered model #{registered['model_id']}"
+                                )
+                            except (ValueError, PermissionError) as exc:
+                                st.error(str(exc))
+                    try:
+                        registered_models = list_forecast_models(
+                            DB_PATH, session_token,
+                        )
+                        if registered_models:
+                            st.dataframe(
+                                pd.DataFrame([
+                                    {key: value for key, value in model.items()
+                                     if key not in {
+                                         "parameters_json", "validation_json",
+                                     }}
+                                    for model in registered_models
+                                ]),
+                                width="stretch",
+                            )
+                            selected_model_id = st.selectbox(
+                                "Registered model ID",
+                                [model["model_id"] for model in registered_models],
+                            )
+                            st.write(
+                                "Audit integrity:",
+                                verify_model_audit(
+                                    DB_PATH, session_token, selected_model_id,
+                                ),
+                            )
+                            st.dataframe(
+                                pd.DataFrame(model_audit_events(
+                                    DB_PATH, session_token, selected_model_id,
+                                )),
+                                width="stretch",
+                            )
+                            allowed_targets = (
+                                ["IN_REVIEW"] if current_user["role"] in {
+                                    "ACTUARY", "ADMIN"
+                                } else ["APPROVED", "REJECTED"]
+                                if current_user["role"] == "REVIEWER" else []
+                            )
+                            if allowed_targets:
+                                with st.form("forecast_model_review"):
+                                    model_target = st.selectbox(
+                                        "New model status", allowed_targets,
+                                    )
+                                    model_reason = st.text_input(
+                                        "Review reason",
+                                    )
+                                    apply_model_status = st.form_submit_button(
+                                        "Record model decision",
+                                    )
+                                if apply_model_status:
+                                    try:
+                                        transition_forecast_model(
+                                            DB_PATH, session_token,
+                                            selected_model_id, model_target,
+                                            model_reason,
+                                        )
+                                        st.success("Model decision recorded")
+                                        st.rerun()
+                                    except (ValueError, PermissionError) as exc:
+                                        st.error(str(exc))
+                        else:
+                            st.info("No forecast models registered yet")
+                    except (OSError, ValueError, PermissionError) as exc:
+                        st.warning(f"Model registry unavailable: {exc}")
                     st.download_button(
                         "Download alert report (CSV)",
                         data=report_csv(management),
