@@ -53,6 +53,11 @@ from actuarial_ai.report_history import get_report, list_reports, save_report
 from actuarial_ai.reporting import analysis_report, report_json
 from actuarial_ai.risk_dashboard import portfolio_risk_dashboard
 from actuarial_ai.risk_limits import assess_risk_limits, risk_snapshot
+from actuarial_ai.risk_management_reporting import (
+    report_csv,
+    report_pdf,
+    risk_management_report,
+)
 from actuarial_ai.risk_monitor import (
     load_monitoring_alerts,
     load_monitoring_runs,
@@ -691,6 +696,48 @@ if portfolio_upload is not None:
                         )
                 except (OSError, ValueError, TypeError) as exc:
                     st.warning(f"Automation overview unavailable: {exc}")
+                st.subheader("Risk management reporting (Phase 34)")
+                sla_hours = st.number_input(
+                    "Risk reporting SLA (hours)", min_value=1.0,
+                    max_value=8760.0, value=24.0,
+                )
+                try:
+                    management = risk_management_report(
+                        db_path, sla_hours=sla_hours,
+                    )
+                    kpis = management["kpis"]
+                    metric_cols = st.columns(4)
+                    for col, (label, value) in zip(metric_cols, [
+                        ("Open alerts", kpis["open_alerts"]),
+                        ("Critical open", kpis["critical_open"]),
+                        ("Escalated open", kpis["escalated_open"]),
+                        ("SLA breaches", kpis["sla_breaches"]),
+                    ]):
+                        col.metric(label, value)
+                    st.caption(
+                        f"Resolved: {kpis['resolved_alerts']} | "
+                        f"Mean resolution hours: {kpis['mean_resolution_hours']}"
+                    )
+                    if management["risk_trend"]:
+                        trends_frame = pd.DataFrame(management["risk_trend"])
+                        st.line_chart(
+                            trends_frame.set_index("created_utc")["total_se"]
+                        )
+                        st.dataframe(trends_frame, width="stretch")
+                    st.download_button(
+                        "Download alert report (CSV)",
+                        data=report_csv(management),
+                        file_name="risk_alert_report.csv",
+                        mime="text/csv",
+                    )
+                    st.download_button(
+                        "Download management report (PDF)",
+                        data=report_pdf(management),
+                        file_name="risk_management_report.pdf",
+                        mime="application/pdf",
+                    )
+                except (OSError, ValueError, TypeError) as exc:
+                    st.warning(f"Risk reporting unavailable: {exc}")
                 snapshot = risk_snapshot(assessment, monitoring_dashboard)
                 all_records = [*history_records, snapshot]
                 try:
