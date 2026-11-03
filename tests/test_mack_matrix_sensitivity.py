@@ -52,7 +52,7 @@ def test_rejects_invalid_shocks(shocks):
 
 
 def test_three_segment_pairs():
-    segments = {**sample(), "Liability": synthetic_triangle(10, seed=3)}
+    segments = {**sample(), "Liability": synthetic_triangle(8, seed=1) * 1.3}
     names = sorted(segments)
     correlation = pd.DataFrame(
         np.eye(3), index=names, columns=names,
