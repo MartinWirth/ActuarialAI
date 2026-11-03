@@ -1,6 +1,6 @@
 """Analysis of portable Mack risk monitoring snapshots over time."""
-from datetime import datetime
 import json
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
