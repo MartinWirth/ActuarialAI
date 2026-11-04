@@ -37,6 +37,10 @@ from actuarial_ai.forecast_deployment import (
     deploy_forecast_model,
     deployment_history,
 )
+from actuarial_ai.forecast_execution import (
+    execute_active_forecast,
+    forecast_execution_history,
+)
 from actuarial_ai.forecast_model_registry import (
     list_forecast_models,
     model_audit_events,
@@ -964,6 +968,50 @@ if portfolio_upload is not None:
                                     st.error(str(exc))
                     except (OSError, ValueError, PermissionError) as exc:
                         st.warning(f"Model deployment unavailable: {exc}")
+                    st.subheader("Active model execution (Phase 39)")
+                    execution_horizon = st.slider(
+                        "Active model forecast horizon", 1, 12, 3,
+                    )
+                    if st.button("Run approved active forecast"):
+                        try:
+                            executed = execute_active_forecast(
+                                DB_PATH, session_token,
+                                management["risk_trend"],
+                                horizon=execution_horizon,
+                            )
+                            st.success(
+                                f"Executed {executed['model_name']} "
+                                f"(model #{executed['model_id']})"
+                            )
+                            st.dataframe(
+                                pd.DataFrame(executed["forecast"]),
+                                width="stretch",
+                            )
+                            st.caption(executed["assumptions"])
+                        except (ValueError, PermissionError, TypeError) as exc:
+                            st.error(f"Forecast execution blocked: {exc}")
+                    try:
+                        execution_records = forecast_execution_history(
+                            DB_PATH, session_token,
+                        )
+                        if execution_records:
+                            st.dataframe(
+                                pd.DataFrame([
+                                    {key: value for key, value in record.items()
+                                     if key != "result_json"}
+                                    for record in execution_records
+                                ]),
+                                width="stretch",
+                            )
+                            if not all(
+                                record["integrity_valid"]
+                                for record in execution_records
+                            ):
+                                st.warning(
+                                    "Forecast execution log integrity failure"
+                                )
+                    except (OSError, ValueError, PermissionError) as exc:
+                        st.warning(f"Execution history unavailable: {exc}")
                     st.download_button(
                         "Download alert report (CSV)",
                         data=report_csv(management),
