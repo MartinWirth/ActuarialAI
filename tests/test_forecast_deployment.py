@@ -56,7 +56,7 @@ def test_activate_compare_and_rollback(tmp_path):
 
 
 def test_invalid_targets_and_tampering(tmp_path):
-    path, admin, reviewer, ids = setup_models(tmp_path)
+    path, _admin, reviewer, ids = setup_models(tmp_path)
     with pytest.raises(ValueError):
         deploy_forecast_model(path, reviewer, ids[1], "rollback", rollback=True)
     with pytest.raises(ValueError):
