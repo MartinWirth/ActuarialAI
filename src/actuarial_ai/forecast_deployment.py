@@ -81,7 +81,7 @@ def deploy_forecast_model(path, token, model_id, reason, *, rollback=False):
     """Activate an approved candidate; rollback must target a former active ID."""
     actor = require_permission(path, token, "approve_reports")["username"]
     if not isinstance(model_id, int) or isinstance(model_id, bool):
-        raise ValueError("Invalid model ID")
+        raise TypeError("Invalid model ID")
     if not isinstance(reason, str) or not reason.strip():
         raise ValueError("Deployment reason is required")
     if not verify_model_audit(path, token, model_id):
